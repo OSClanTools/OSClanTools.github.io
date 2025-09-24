@@ -494,34 +494,56 @@ function TileCard({ tile, onSelect, selected, marker }) {
     );
   }
 
-  function PreviewGrid({ tiles, onSelect, selectedId, setTiles, cols, snake }){
-    const listRef = useRef(null);
-    useSortable(listRef, tiles, (newArr)=>{ setTiles(newArr); });
+ function PreviewGrid({ tiles, onSelect, selectedId, setTiles, cols, snake }) {
+  const listRef = React.useRef(null);
 
-    // compute grid placement for each tile based on path order and settings
-    const cellStyleFor = (index)=>{
-      const row = Math.floor(index / Math.max(1, cols));
-      const colBase = index % Math.max(1, cols);
-      const col = snake && (row % 2 === 1) ? (Math.max(1, cols) - 1 - colBase) : colBase;
-      return { gridColumn: (col + 1), gridRow: (row + 1) };
-    };
+  // SortableJS wire-up (drag whole grid cell)
+  useSortable(listRef, tiles, (newArr) => {
+    // Resequence path order -> tileNumber & id (1..N)
+    for (let i = 0; i < newArr.length; i++) {
+      newArr[i] = { ...newArr[i], tileNumber: i + 1, id: String(i + 1) };
+    }
+    setTiles(newArr.slice());
+  });
 
-    return (
-      React.createElement('div', { ref: listRef, className: 'tt-grid', style: { gridTemplateColumns: `repeat(${Math.max(1, cols)}, var(--tile))` } },
-        tiles.map((t, i)=> {
-          const marker = i === 0 ? 'START' : (i === tiles.length - 1 ? 'FINISH' : null);
-         return React.createElement('div', { key: t.id, 'data-id': t.id, className: 'tt-cell', style: cellStyleFor(i) },
-            React.createElement('img', {
-  src: tile.iconFile,
-  className: 'tt-tile-icon',
-  draggable: false,
-  onError:(e)=>{ e.currentTarget.style.display='none'; }
-})
-          );
-        })
+  const colsSafe = Math.max(1, Math.min(15, Number(cols) || 1)); // clamp to 1..15
+
+  // Compute grid placement from path index
+  const cellStyleFor = (pathIndex) => {
+    const row = Math.floor(pathIndex / colsSafe);
+    const colBase = pathIndex % colsSafe;
+    const col = snake && (row % 2 === 1) ? (colsSafe - 1 - colBase) : colBase;
+    return { gridColumn: col + 1, gridRow: row + 1 };
+  };
+
+  return (
+    React.createElement(
+      'div',
+      {
+        ref: listRef,
+        className: 'tt-grid',
+        style: { gridTemplateColumns: `repeat(${colsSafe}, var(--tile))` },
+      },
+      tiles.map((t, i) =>
+        React.createElement(
+          'div',
+          {
+            key: t.id,
+            'data-id': t.id,
+            className: 'tt-cell',
+            style: cellStyleFor(i),
+          },
+          React.createElement(TileCard, {
+            tile: t,
+            onSelect: () => onSelect(t.id),
+            selected: t.id === selectedId,
+            marker: i === 0 ? 'START' : (i === tiles.length - 1 ? 'FINISH' : null),
+          })
+        )
       )
-    );
-  }
+    )
+  );
+}
 
   function BoardSettings({ cols, setCols, snake, setSnake, count }){
     return React.createElement('div', { className: 'flex flex-wrap items-center gap-4' },
@@ -674,9 +696,6 @@ function TileCard({ tile, onSelect, selected, marker }) {
       )
     );
   }
-
-  const root = ReactDOM.createRoot(document.getElementById('root'));
-  root.render(React.createElement(App));
   </script>
 </body>
 </html>
