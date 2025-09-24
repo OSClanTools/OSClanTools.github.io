@@ -160,14 +160,7 @@
 }
     .tt-id { font-size: 11px; color: rgba(0,0,0,0.55); margin-left: auto; }
       /* Grid container for board preview */
-.tt-grid {
-  display: grid;
-  grid-auto-rows: var(--tile);
-  grid-auto-flow: row dense;  /* cascade into next row, fill holes while dragging */
-  align-content: start;
-  justify-content: start;
-  gap: 12px;
-}
+.tt-grid { gap: 12px; }
 
     /* Start/Finish marker badges */
     .tt-marker {
@@ -199,14 +192,11 @@
 }
 
 /* Prevent image-native drag ghost */
-.tt-tile img {
-  -webkit-user-drag: none;
-}
+.tt-tile img { -webkit-user-drag: none; }
 .tt-chosen .tt-tile {
   transform: scale(1.04);
   box-shadow: 0 10px 18px rgba(0,0,0,.25), inset 0 0 0 1.5px rgba(0,0,0,.25);
 }
-
 .tt-ghost .tt-tile {               /* placeholder in original slot */
   visibility: hidden;              /* hide original tile while a mirror follows pointer */
 }
@@ -226,16 +216,6 @@
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
   <script>
-
-    const rootEl = document.getElementById('root');
-try {
-  const root = ReactDOM.createRoot(rootEl);
-  root.render(React.createElement(App));
-} catch (e) {
-  rootEl.innerHTML = '<div style="padding:16px;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:12px;font-family:ui-sans-serif">UI failed to load: '
-    + String((e && e.message) || e) + '</div>';
-  console.error(e);
-}
   const { useState, useMemo, useEffect, useRef } = React;
 
   // All supported effects and their suggested default trigger/params
@@ -349,27 +329,43 @@ try {
   function useSortable(containerRef, items, setItems){
     useEffect(()=>{
       if(!containerRef.current) return;
- const sortable = new Sortable(containerRef.current, {
-   animation: 150,
-   draggable: '.tt-cell',      // drag the cell wrapper so ghost = tile position
-   handle: '.tt-tile',         // grab anywhere on the tile (we'll refine in step 2)
-   ghostClass: 'opacity-40',
-   forceFallback: true,        // better cross-browser ghost alignment
-   fallbackOnBody: true,
-   fallbackTolerance: 3,
-   scroll: true,
-   scrollSensitivity: 40,
-   scrollSpeed: 10,
-   bubbleScroll: true,
-        onEnd: (evt)=>{
-          const newArr = items.slice();
-          const [moved] = newArr.splice(evt.oldIndex, 1);
-          newArr.splice(evt.newIndex, 0, moved);
-          // resequence tileNumber
-          newArr.forEach((t,i)=>{ t.tileNumber = i+1; t.id = String(i+1); });
-          setItems(newArr);
-        }
-      });
+const sortable = new Sortable(containerRef.current, {
+  draggable: '.tt-cell',       // drag the fixed-size grid cell
+  handle: '.tt-tile',          // grab anywhere on the tile
+  animation: 180,
+  easing: 'cubic-bezier(.2,.7,.2,1)',
+
+  // Smooth “pick up” + consistent mirror element (no giant ghost)
+  forceFallback: true,
+  fallbackOnBody: true,
+  fallbackTolerance: 3,
+  delayOnTouchOnly: true,
+  touchStartThreshold: 4,
+
+  // Snappy index switching while hovering other cells
+  swapThreshold: 0.6,
+  invertSwap: true,
+  invertSwapThreshold: 0.8,
+
+  // CSS hooks we’ll style below
+  ghostClass: 'tt-ghost',
+  chosenClass: 'tt-chosen',
+  dragClass: 'tt-drag',
+
+  scroll: true,
+  scrollSensitivity: 40,
+  scrollSpeed: 10,
+  bubbleScroll: true,
+
+  onEnd: (evt) => {
+    const newArr = items.slice();
+    const [moved] = newArr.splice(evt.oldIndex, 1);
+    newArr.splice(evt.newIndex, 0, moved);
+    // resequence path order
+    newArr.forEach((t,i)=>{ t.tileNumber = i+1; t.id = String(i+1); });
+    setItems(newArr);
+  }
+});
       return ()=> sortable.destroy();
     }, [containerRef, items, setItems]);
   }
@@ -381,7 +377,7 @@ function TileCard({ tile, onSelect, selected, marker }) {
   return (
     React.createElement('div', { className: selected ? 'rounded-xl ring-2 ring-indigo-400' : '' },
       React.createElement('div', {
-        className: 'tt-tile drag-handle',   // tile itself is the handle
+        className: 'tt-tile drag-handle', // tile itself is the handle
         onClick: onSelect,
         tabIndex: 0
       },
@@ -389,12 +385,11 @@ function TileCard({ tile, onSelect, selected, marker }) {
         React.createElement('div', { className: 'tt-tile-num' }, `#${tile.tileNumber}`),
         hasIcon
           ? React.createElement('img', {
-  src: tile.iconFile,
-  className: 'tt-tile-icon',
-  draggable: false,
-  onError:(e)=>{ e.currentTarget.style.display='none'; }
-})
-
+              src: tile.iconFile,
+              className: 'tt-tile-icon',
+              draggable: false,                      // prevent image-native ghost
+              onError:(e)=>{ e.currentTarget.style.display='none'; }
+            })
           : React.createElement('div', { className: 'tt-tile-name' }, (tile.name || 'Untitled')),
         (tile.effect && tile.effect.kind && tile.effect.kind !== 'none') &&
           React.createElement('div', { className: 'tt-tile-badge', title: tile.effect.kind },
@@ -744,6 +739,9 @@ React.createElement('div', { className: 'tt-layout' },
       )
     );
   }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(React.createElement(App));
   </script>
 </body>
 </html>
