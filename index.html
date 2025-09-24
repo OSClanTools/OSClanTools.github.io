@@ -115,16 +115,22 @@
       text-shadow: 0 1px 0 rgba(0,0,0,.85);
       user-select: none;
     }
+    
+/* Each grid cell = exactly one tile */
+.tt-cell {
+  width: var(--tile);
+  height: var(--tile);
+  position: relative;
+}
 
-    .tt-card { /* outer wrapper for drag affordance */
-      display: flex; align-items: center; gap: 10px;
-      padding: 8px; background: rgba(255,255,255,0.55);
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 14px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-      backdrop-filter: blur(2px);
-    }
-
+/* Keep the visual wrapper the same size as the tile while we fix offset */
+.tt-card {
+  width: var(--tile);
+  padding: 0;                 /* no extra padding around the tile for now */
+  background: transparent;    /* remove white background to avoid size mismatch */
+  border: none;
+  box-shadow: none;
+}
     .tt-id { font-size: 11px; color: rgba(0,0,0,0.55); margin-left: auto; }
       /* Grid container for board preview */
     .tt-grid { display: grid; grid-auto-rows: var(--tile); gap: 12px; }
@@ -280,10 +286,18 @@ try {
   function useSortable(containerRef, items, setItems){
     useEffect(()=>{
       if(!containerRef.current) return;
-      const sortable = new Sortable(containerRef.current, {
-        animation: 150,
-        handle: '.drag-handle',
-        ghostClass: 'opacity-40',
+ const sortable = new Sortable(containerRef.current, {
+   animation: 150,
+   draggable: '.tt-cell',      // drag the cell wrapper so ghost = tile position
+   handle: '.tt-tile',         // grab anywhere on the tile (we'll refine in step 2)
+   ghostClass: 'opacity-40',
+   forceFallback: true,        // better cross-browser ghost alignment
+   fallbackOnBody: true,
+   fallbackTolerance: 3,
+   scroll: true,
+   scrollSensitivity: 40,
+   scrollSpeed: 10,
+   bubbleScroll: true,
         onEnd: (evt)=>{
           const newArr = items.slice();
           const [moved] = newArr.splice(evt.oldIndex, 1);
@@ -302,8 +316,7 @@ try {
     const hasIcon = Boolean(tile.iconFile);
     return (
       React.createElement('div', { className: `tt-card ${selected? 'ring-2 ring-indigo-400': ''}` },
-        React.createElement('div', { className: 'drag-handle shrink-0 w-5 text-slate-400 hover:text-slate-600 select-none' }, '≡'),
-        React.createElement('div', { className: 'tt-tile shrink-0', onClick: onSelect },
+        React.createElement('div', { className: 'tt-tile shrink-0 drag-handle', onClick: onSelect },
           marker && React.createElement('div', { className: `tt-marker ${marker==='FINISH' ? 'finish' : ''}` }, marker),
           React.createElement('div', { className: 'tt-tile-num' }, `#${tile.tileNumber}`),
           hasIcon
@@ -472,7 +485,7 @@ try {
       React.createElement('div', { ref: listRef, className: 'tt-grid', style: { gridTemplateColumns: `repeat(${Math.max(1, cols)}, var(--tile))` } },
         tiles.map((t, i)=> {
           const marker = i === 0 ? 'START' : (i === tiles.length - 1 ? 'FINISH' : null);
-          return React.createElement('div', { key: t.id, 'data-id': t.id, style: cellStyleFor(i) },
+         return React.createElement('div', { key: t.id, 'data-id': t.id, className: 'tt-cell', style: cellStyleFor(i) },
             React.createElement(TileCard, { tile: t, onSelect: ()=> onSelect(t.id), selected: t.id===selectedId, marker })
           );
         })
