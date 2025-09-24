@@ -162,18 +162,23 @@
       }
     }
 
-    .tt-board-wrap {
-      position: relative;
-      overflow: auto;
-      padding: 8px;
-      background: rgba(255, 255, 255, 0.35);
-      border: 1px solid rgba(0, 0, 0, 0.06);
-      border-radius: 14px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-      backdrop-filter: blur(2px);
-      max-height: calc((var(--tile) * 15) + (12px * 14) + 24px);
-    }
+.tt-board-wrap {
+  position: relative;
+  overflow: auto;           /* keep vertical scroll if tall */
+  overflow-x: hidden;       /* prevent horizontal scroll */
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(2px);
 
+  /* cap to 15 rows (15 tiles + 14 gaps + padding) */
+  max-height: calc((var(--tile) * 15) + (12px * 14) + 24px);
+
+  display: flex;            /* ⟵ center the grid */
+  justify-content: center;
+}
 
     /* Keep the visual wrapper the same size as the tile while we fix offset */
     .tt-card {
@@ -189,17 +194,20 @@
       color: rgba(0, 0, 0, 0.55);
       margin-left: auto;
     }
+.tt-grid[data-scale] { }
 
-    /* Grid container for board preview */
-    .tt-grid {
-      display: grid;
-      grid-auto-rows: var(--tile);
-      grid-auto-flow: row dense;
-      /* enables smooth cascading when dragging */
-      align-content: start;
-      justify-content: start;
-      gap: 12px;
-    }
+.tt-grid {
+  display: grid;
+  grid-auto-rows: var(--tile);
+  grid-auto-flow: row dense;
+  align-content: start;
+  justify-content: start;   /* grid content starts at col 1 */
+  gap: 12px;
+
+  /* Center + scale to fit (hook below sets transform) */
+  margin-inline: auto;
+  transform-origin: top center;
+}
 
     /* Start/Finish marker badges */
     .tt-marker {
@@ -345,6 +353,56 @@
   display: block;
   border-radius: 4px;
 }
+.panel-medieval {
+  position: relative;
+  background: url('assets/images/parchment.png') center/cover no-repeat, rgba(250, 245, 230, 0.86);
+  border: 3px solid #cd7f32;          /* bronze */
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.12), inset 0 0 0 1.5px #8a531e;
+  overflow: hidden;
+}
+.panel-medieval::before {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at top, rgba(255,255,255,.25), transparent 60%),
+              radial-gradient(ellipse at bottom, rgba(0,0,0,.08), transparent 60%);
+  pointer-events: none;
+}
+
+/* Section heading in RuneScape-Quill */
+.heading-medieval {
+  font-family: 'RuneScape-Quill', Inter, ui-sans-serif;
+  letter-spacing: .3px;
+  color: #2c1a0e;
+  text-shadow: 0 1px 0 rgba(0,0,0,.35);
+}
+
+/* Bronze button */
+.btn-bronze {
+  background: linear-gradient(180deg, #d8a25e, #b0792e);
+  color: #1b1108;
+  border: 1px solid #8a531e;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,.2), inset 0 0 0 1px rgba(255,255,255,.25);
+  transition: transform .06s ease, box-shadow .12s ease;
+}
+.btn-bronze:hover { transform: translateY(-1px); }
+.btn-bronze:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+
+/* Secondary "stone" button */
+.btn-stone {
+  background: linear-gradient(180deg, #e5e7eb, #cbd5e1);
+  color: #111827;
+  border: 1px solid #9ca3af;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,.1), inset 0 0 0 1px rgba(255,255,255,.25);
+  transition: transform .06s ease, box-shadow .12s ease;
+}
+.btn-stone:hover { transform: translateY(-1px); }
   </style>
 </head>
 
@@ -384,6 +442,30 @@
       for (let i = 0; i < size; i++) s += chars[Math.floor(Math.random() * chars.length)];
       return s;
     }
+
+    function useFitScale(gridRef, cols = 15) {
+  React.useEffect(() => {
+    if (!gridRef.current) return;
+    const el = gridRef.current;
+    const parent = el.parentElement;
+
+    const compute = () => {
+      const root = getComputedStyle(document.documentElement);
+      const tile = parseFloat(root.getPropertyValue('--tile')) || 84;
+      const gap = 12; // must match .tt-grid gap
+      const full = cols * tile + (cols - 1) * gap;    // full pixel width of 15 columns
+      const avail = parent.clientWidth - 8 * 2;       // 8px padding on each side
+      const scale = Math.max(0.5, Math.min(1, avail / full)); // clamp 0.5..1 for readability
+      el.style.transform = `scale(${scale})`;
+      el.setAttribute('data-scale', String(scale));
+    };
+
+    const ro = new ResizeObserver(compute);
+    ro.observe(parent);
+    compute();
+    return () => ro.disconnect();
+  }, [gridRef, cols]);
+}
 
     function useAutoCols(maxCols = 15) {
       const gridRef = React.useRef(null);
@@ -868,11 +950,12 @@ function EffectBuilderPanel() {
 
       return (
         React.createElement('div', { className: 'flex flex-wrap items-center gap-2' },
-          React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700', onClick: onNew }, 'Add Tile'),
-          React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-slate-200 text-slate-800 hover:bg-slate-300', onClick: onClear }, 'Clear'),
-          React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-sky-600 text-white hover:bg-sky-700', onClick: triggerImport }, 'Import JSON'),
+          React.createElement('button', { className: 'btn-bronze', onClick: onNew }, 'Add Tile'),
+React.createElement('button', { className: 'btn-stone',  onClick: onClear }, 'Clear'),
+React.createElement('button', { className: 'btn-bronze', onClick: triggerImport }, 'Import JSON'),
+React.createElement('button', { className: 'btn-bronze', onClick: onExport }, 'Export JSON'),
+
           React.createElement('input', { ref: fileRef, type: 'file', accept: '.json,application/json', className: 'hidden', onChange: onFile }),
-          React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700', onClick: onExport }, 'Export JSON'),
           React.createElement('div', { className: 'ml-auto text-sm text-slate-600' }, `${count} tile${count === 1 ? '' : 's'}`)
         )
       );
@@ -938,6 +1021,8 @@ function buildSnakePositions(count, ROW_LEN = 15) {
 function PreviewGrid({ tiles, onSelect, selectedId, setTiles, onDropEffect }) {
   const listRef = React.useRef(null);
   const ROW_LEN = 15;
+
+  useFitScale(listRef, ROW_LEN);
 
   // Build positions for ALL playable tiles (1..N)
   const positions = React.useMemo(
@@ -1019,12 +1104,12 @@ React.createElement(TileCard, {
       const rows = Math.ceil(count / 15);
       return React.createElement('div', { className: 'flex flex-wrap items-center gap-4' },
         React.createElement('div', null,
-          React.createElement('div', { className: 'text-sm text-slate-700' }, 'Columns: 15 (fixed)')
+          React.createElement('div', { className: 'heading-medieval text-sm' }, 'Columns: 15 (fixed)')
         ),
         React.createElement('div', null,
-          React.createElement('div', { className: 'text-sm text-slate-700' }, 'Path: Snake (always on)')
+          React.createElement('div', { className: 'heading-medieval text-sm' }, 'Path: Snake (always on)')
         ),
-        React.createElement('div', { className: 'ml-auto text-sm text-slate-600' }, `Rows: ${rows}`)
+        React.createElement('div', { className: 'ml-auto heading-medieval text-sm' }, `Rows: ${rows}`)
       );
     }
 
@@ -1155,11 +1240,11 @@ React.createElement(TileCard, {
             )
           ),
 
-          React.createElement('div', { className: 'rounded-2xl bg-white shadow-soft border border-slate-200 p-4' },
-            React.createElement(Toolbar, { onNew: addTile, onClear: clearAll, onImport: importJSON, onExport: exportJSON, count: tiles.length })
-          ),
+         React.createElement('div', { className: 'panel-medieval p-4' },
+  React.createElement(Toolbar, { onNew: addTile, onClear: clearAll, onImport: importJSON, onExport: exportJSON, count: tiles.length })
+),
 
-          React.createElement('div', { className: 'rounded-2xl bg-white shadow-soft border border-slate-200 p-4' },
+          React.createElement('div', { className: 'panel-medieval p-4' },
             React.createElement(BoardSettings, { count: tiles.length })
           ),
 
@@ -1179,7 +1264,7 @@ React.createElement(TileCard, {
             ),
 
             // Right: Editor
-            React.createElement('aside', { className: 'rounded-2xl bg-white shadow-soft border border-slate-200 p-4 space-y-6' },
+            React.createElement('aside', { className: 'panel-medieval p-4 space-y-6' },
               React.createElement('div', null,
                 React.createElement('h2', { className: 'text-sm font-semibold text-slate-700 mb-3' }, 'Tile Editor'),
                 React.createElement(EditorPanel, {
