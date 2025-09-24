@@ -240,28 +240,9 @@
       -webkit-user-drag: none;
     }
 
-    .tt-chosen .tt-tile {
-      transform: scale(1.04);
-      box-shadow: 0 10px 18px rgba(0, 0, 0, .25), inset 0 0 0 1.5px rgba(0, 0, 0, .25);
-    }
-
-    .tt-ghost .tt-tile {
-      /* placeholder in original slot */
-      visibility: hidden;
-      /* hide original tile while a mirror follows pointer */
-    }
-
-    .tt-grid.tt-liveflow .tt-cell {
-      grid-column: auto !important;
-      grid-row: auto !important;
-    }
-
-    /* Lighter mirror to reduce lag behind cursor */
-    .tt-drag {
-      opacity: .98;
-      cursor: grabbing !important;
-      transition: none;
-    }
+.tt-ghost .tt-tile { visibility: hidden; }
+.tt-chosen .tt-tile { transform: scale(1.04); box-shadow: 0 10px 18px rgba(0,0,0,.25), inset 0 0 0 1.5px rgba(0,0,0,.25); }
+.tt-drag { opacity: .98; cursor: grabbing !important; transition: none; }
 
     .tt-drag .tt-tile {
       transform: scale(1.02);
@@ -647,60 +628,105 @@ function useSortable(containerRef, items, setItems) {
         )
       );
     }
+    function buildSnakePositions(count, rowLen = 15) {
+  const positions = [];
+  let x = 0, y = 0, dir = 1;
 
-    function PreviewGrid({ tiles, onSelect, selectedId, setTiles /* no cols prop */, /* snake removed here */ }) {
-      const [gridRef, colsAuto] = useAutoCols(15);    // auto-fit up to 15 columns
-      const listRef = gridRef;                         // Sortable attaches to the same element
+  for (let i = 0; i < count;) {
+    // Horizontal run of up to rowLen
+    for (let h = 0; h < rowLen && i < count; h++, i++) {
+      positions.push({ x, y, type: 'h', hIndex: h });
+      if (h < rowLen - 1 && i < count) x += dir;
+    }
+    // Vertical drop (1 tile directly below the end of the row)
+    if (i < count) {
+      y++;
+      positions.push({ x, y, type: 'drop' });
+      i++;
+    }
+    // Flip direction & advance to next horizontal row
+    dir *= -1;
+    y++;
+  }
+  return positions;
+}
 
-      // Keep snake always ON (Step 6)
-      const snakeFlag = true;
+function PreviewGrid({ tiles, onSelect, selectedId, setTiles }) {
+  const listRef = React.useRef(null);
+  const ROW_LEN = 15;
 
-      // SortableJS wire-up
-      useSortable(listRef, tiles, (newArr) => {
-        // Resequence path order => tileNumber & id (1..N)
-        for (let i = 0; i < newArr.length; i++) {
-          newArr[i] = { ...newArr[i], tileNumber: i + 1, id: String(i + 1) };
+  // Precompute snake positions and “row start” flags for horizontal rows
+  const positions = React.useMemo(() => buildSnakePositions(tiles.length, ROW_LEN), [tiles.length]);
+
+  // Compute which tile indices are the first of each horizontal row (for a clear row indicator)
+  const rowStartFlags = React.useMemo(() => {
+    const flags = new Array(tiles.length).fill(false);
+    let horizontalRowCount = 0;
+    for (let i = 0; i < positions.length; i++) {
+      const p = positions[i];
+      if (p.type === 'h' && p.hIndex === 0) {
+        flags[i] = true;
+        horizontalRowCount++;
+      }
+    }
+    return flags;
+  }, [positions]);
+
+  // SortableJS wire-up (keep explicit positioning => last row remains right-anchored)
+  useSortable(listRef, tiles, (newArr) => {
+    for (let i = 0; i < newArr.length; i++) {
+      newArr[i] = { ...newArr[i], tileNumber: i + 1, id: String(i + 1) };
+    }
+    setTiles(newArr.slice());
+  });
+
+  // Cell style uses the precomputed (x,y) directly
+  const cellStyleFor = (i) => {
+    const p = positions[i];
+    return { gridColumn: (p.x + 1), gridRow: (p.y + 1) };
+  };
+
+  // We show “ROW n” only on the first tile of each horizontal row
+  let rowCounter = 0;
+
+  return (
+    React.createElement(
+      'div',
+      {
+        ref: listRef,
+        className: 'tt-grid',
+        style: { gridTemplateColumns: `repeat(${ROW_LEN}, var(--tile))` },
+      },
+      tiles.map((t, i) => {
+        let marker = null;
+        if (rowStartFlags[i]) {
+          rowCounter += 1;               // count horizontal rows only
+          marker = `ROW ${rowCounter}`;
+        } else if (i === 0) {
+          marker = 'START';
+        } else if (i === tiles.length - 1) {
+          marker = 'FINISH';
         }
-        setTiles(newArr.slice());
-      });
 
-      // Compute grid placement by path index, using the auto-detected column count
-      const cellStyleFor = (pathIndex) => {
-        const colsSafe = Math.max(1, colsAuto | 0);
-        const row = Math.floor(pathIndex / colsSafe);
-        const colBase = pathIndex % colsSafe;
-        const col = snakeFlag && (row % 2 === 1) ? (colsSafe - 1 - colBase) : colBase;
-        return { gridColumn: col + 1, gridRow: row + 1 };
-      };
-
-      return (
-        React.createElement(
+        return React.createElement(
           'div',
           {
-            ref: listRef,
-            className: 'tt-grid',
-            style: { gridTemplateColumns: `repeat(${Math.max(1, colsAuto)}, var(--tile))` },
+            key: t.id,
+            'data-id': t.id,
+            className: 'tt-cell',
+            style: cellStyleFor(i),
           },
-          tiles.map((t, i) =>
-            React.createElement(
-              'div',
-              {
-                key: t.id,
-                'data-id': t.id,
-                className: 'tt-cell',
-                style: cellStyleFor(i),
-              },
-              React.createElement(TileCard, {
-                tile: t,
-                onSelect: () => onSelect(t.id),
-                selected: t.id === selectedId,
-                marker: i === 0 ? 'START' : (i === tiles.length - 1 ? 'FINISH' : null),
-              })
-            )
-          )
-        )
-      );
-    }
+          React.createElement(TileCard, {
+            tile: t,
+            onSelect: () => onSelect(t.id),
+            selected: t.id === selectedId,
+            marker,
+          })
+        );
+      })
+    )
+  );
+}
 
     function BoardSettings({ count }) {
       const rows = Math.ceil(count / 15);
