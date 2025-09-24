@@ -592,6 +592,49 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
+    function randomInt(min, max) {
+  const a = Math.ceil(min), b = Math.floor(max);
+  return Math.floor(Math.random() * (b - a + 1)) + a;
+}
+
+// Scale the percent of effected tiles by board size
+// <20 tiles → ~5–12% ; 20–60 → ~12–22% ; >60 → ~22–30%
+function effectTargetCount(playableCount) {
+  if (playableCount <= 0) return 0;
+  const pct =
+    playableCount < 20
+      ? 0.05 + Math.random() * 0.07
+      : playableCount < 60
+      ? 0.12 + Math.random() * 0.10
+      : 0.22 + Math.random() * 0.08;
+  return Math.max(1, Math.round(playableCount * pct));
+}
+
+function buildRandomEffect(kind, playableCount) {
+  const def = EFFECTS.find(e => e.kind === kind);
+  const trigger = def?.defaultTrigger || 'on_next_roll';
+  switch (kind) {
+    case 'move_forward':
+      return { kind, trigger, amount: randomInt(1, Math.max(2, Math.floor(playableCount * 0.10))) };
+    case 'move_back':
+      return { kind, trigger, amount: randomInt(1, Math.max(1, Math.floor(playableCount * 0.08))) };
+    case 'teleport_to':
+      return { kind, trigger, index: randomInt(1, Math.max(1, playableCount)) }; // 1..N
+    case 'double_next_roll':
+    case 'reverse_next_roll':
+    case 'shield_next_negative':
+      return { kind, trigger, amount: 1 };
+    case 'set_checkpoint':
+    case 'go_to_checkpoint':
+    case 'go_to_start':
+    case 'swap_with_random_team':
+    case 'swap_with_leader':
+      return { kind, trigger };
+    default:
+      return { kind: 'none' };
+  }
+}
+
 function useSortable(containerRef, items, setItems) {
   const { useEffect } = React;
 
@@ -938,7 +981,7 @@ function EffectBuilderPanel() {
 }
 
 
-    function Toolbar({ onNew, onClear, onImport, onExport, count }) {
+    function Toolbar({ onNew, onClear, onImport, onExport, onRandom, count }) {
       const fileRef = useRef(null);
 
       const triggerImport = () => fileRef.current && fileRef.current.click();
@@ -956,6 +999,7 @@ function EffectBuilderPanel() {
         React.createElement('div', { className: 'flex flex-wrap items-center gap-2' },
           React.createElement('button', { className: 'btn-bronze', onClick: onNew }, 'Add Tile'),
 React.createElement('button', { className: 'btn-bronze',  onClick: onClear }, 'Clear'),
+React.createElement('button', { className: 'btn-bronze', onClick: onRandom, title: 'Shuffle tiles and apply randomized effects' }, 'Random Board'),
 React.createElement('button', { className: 'btn-bronze', onClick: triggerImport }, 'Import JSON'),
 React.createElement('button', { className: 'btn-bronze', onClick: onExport }, 'Export JSON'),
 
@@ -1163,6 +1207,64 @@ React.createElement(TileCard, {
         setSelectedId(prev => null);
       };
 
+      const randomizeBoard = () => {
+  setTiles(prev => {
+    if (!Array.isArray(prev) || prev.length <= 1) return prev;
+
+    // Copy and split: keep START (index 0) fixed
+    const head = { ...prev[0] };
+    const rest = prev.slice(1).map(t => ({ ...t }));
+
+    // Shuffle the playable tiles
+    for (let i = rest.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rest[i], rest[j]] = [rest[j], rest[i]];
+    }
+
+    // Clear effects first
+    for (const t of rest) {
+      t.effect = { kind: 'none' };
+      t.meta   = { presetId: 'none', opts: {}, attached: false };
+    }
+
+    // Decide how many tiles to effect
+    const playableCount = rest.length;
+    const toAffect = effectTargetCount(playableCount);
+
+    // Choose unique target indices in rest[]
+    const picks = new Set();
+    while (picks.size < toAffect) {
+      picks.add(Math.floor(Math.random() * playableCount)); // 0..playableCount-1
+    }
+
+    // Pool of effect kinds (exclude 'none')
+    const kinds = EFFECTS.map(e => e.kind).filter(k => k !== 'none');
+
+    // Apply randomized effects
+    for (const idx of picks) {
+      const kind = kinds[Math.floor(Math.random() * kinds.length)];
+      const eff = buildRandomEffect(kind, playableCount);
+      const opts = {};
+      if ('amount' in eff) opts.amount = eff.amount;
+      if ('index'  in eff) opts.index  = eff.index;
+
+      rest[idx].effect = eff;
+      rest[idx].meta   = { presetId: eff.kind, opts, attached: true };
+    }
+
+    // Ensure START tile is clean
+    head.effect = { kind: 'none' };
+    head.meta   = { presetId: 'none', opts: {}, attached: false };
+
+    const next = [head, ...rest];
+
+    // Resequence IDs and tileNumbers 1..N
+    next.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
+
+    return next;
+  });
+};
+
       const clearAll = () => {
         if (confirm('Clear all tiles?')) {
           setTiles([]);
@@ -1245,7 +1347,14 @@ React.createElement(TileCard, {
           ),
 
          React.createElement('div', { className: 'panel-medieval p-4' },
-  React.createElement(Toolbar, { onNew: addTile, onClear: clearAll, onImport: importJSON, onExport: exportJSON, count: tiles.length })
+ React.createElement(Toolbar, {
+  onNew: addTile,
+  onClear: clearAll,
+  onImport: importJSON,
+  onExport: exportJSON,
+  onRandom: randomizeBoard,
+  count: tiles.length
+})
 ),
 
           React.createElement('div', { className: 'panel-medieval p-4' },
