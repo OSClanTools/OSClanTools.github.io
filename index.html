@@ -249,6 +249,42 @@
       /* subtle */
       box-shadow: 0 8px 12px rgba(0, 0, 0, .20), inset 0 0 0 1px rgba(0, 0, 0, .2);
     }
+    .tt-start .tt-tile {
+  background: url('assets/images/parchment.png') center / cover no-repeat;
+  border-color: #22c55e;
+  box-shadow:
+    0 2px 2px rgba(0,0,0,.45),
+    inset 0 0 0 1.5px #15803d,
+    inset 0 6px 10px rgba(255,255,255,.22);
+}
+.tt-start .tt-tile .tt-tile-num { display: none; }
+.tt-start .tt-tile-name {
+  font-size: 14px;
+  color: #14532d;
+}
+
+/* Drop highlight for tiles when dragging an effect token */
+.tt-drop-target .tt-tile {
+  outline: 2px dashed rgba(34,197,94,.9);
+  outline-offset: 2px;
+}
+
+/* Effect token look */
+.tt-token {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(0,0,0,.05);
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: 10px;
+  font-size: 12px;
+  cursor: grab;
+}
+.tt-token:active { cursor: grabbing; }
+.tt-token .dot {
+  width: 8px; height: 8px; border-radius: 9999px; background: #0ea5e9;
+}
   </style>
 </head>
 
@@ -413,44 +449,31 @@ function useSortable(containerRef, items, setItems) {
 
     const el = containerRef.current;
     const sortable = new Sortable(el, {
-      draggable: '.tt-cell',       // drag the fixed-size grid cell
-      handle: '.tt-tile',          // grab anywhere on the tile
+      draggable: '.tt-cell:not(.tt-fixed)',   // 👉 ignore START (fixed)
+      handle: '.tt-tile',
       animation: 120,
       easing: 'cubic-bezier(.2,.7,.2,1)',
-
-      // Smooth pickup + consistent mirror (no giant ghost)
       forceFallback: true,
       fallbackOnBody: true,
       fallbackTolerance: 2,
       delayOnTouchOnly: true,
       touchStartThreshold: 3,
-
-      // Snappy index switching
       swapThreshold: 0.28,
       invertSwap: true,
       invertSwapThreshold: 0.85,
-
-      // CSS hooks you already styled
       ghostClass: 'tt-ghost',
       chosenClass: 'tt-chosen',
       dragClass: 'tt-drag',
-
       scroll: true,
       scrollSensitivity: 48,
       scrollSpeed: 12,
       bubbleScroll: true,
-
-      // ✅ Enable live auto-flow (cascading + snap) during drag
-      onStart: () => { el.classList.add('tt-liveflow'); },
-
-      // ✅ Reorder -> resequence -> disable liveflow
       onEnd: (evt) => {
         const newArr = items.slice();
         const [moved] = newArr.splice(evt.oldIndex, 1);
         newArr.splice(evt.newIndex, 0, moved);
         newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
         setItems(newArr);
-        el.classList.remove('tt-liveflow');
       },
     });
 
@@ -458,17 +481,37 @@ function useSortable(containerRef, items, setItems) {
   }, [containerRef, items, setItems]);
 }
 
-    function TileCard({ tile, onSelect, selected, marker }) {
+    function TileCard({ tile, onSelect, selected, marker, onDropEffect }) {
       const eff = EFFECTS.find(e => e.kind === tile.effect?.kind);
       const hasIcon = Boolean(tile.iconFile);
 
       return (
         React.createElement('div', { className: selected ? 'rounded-xl ring-2 ring-indigo-400' : '' },
-          React.createElement('div', {
-            className: 'tt-tile drag-handle', // tile itself is the handle
-            onClick: onSelect,
-            tabIndex: 0
-          },
+React.createElement('div', {
+  className: 'tt-tile drag-handle',
+  onClick: onSelect,
+  tabIndex: 0,
+  onDragOver: (e) => {
+    if (e.dataTransfer.types.includes('text/tt-effect') || e.dataTransfer.types.includes('application/json')) {
+      e.preventDefault();
+      e.currentTarget.parentElement.classList.add('tt-drop-target');
+    }
+  },
+  onDragLeave: (e) => {
+    e.currentTarget.parentElement.classList.remove('tt-drop-target');
+  },
+  onDrop: (e) => {
+    e.preventDefault();
+    e.currentTarget.parentElement.classList.remove('tt-drop-target');
+    let json = e.dataTransfer.getData('text/tt-effect') || e.dataTransfer.getData('application/json');
+    if (!json) return;
+    try {
+      const eff = JSON.parse(json);
+      if (!eff || typeof eff !== 'object') return;
+      if (typeof onDropEffect === 'function') onDropEffect(eff);   // <- provided by parent
+    } catch {}
+  }
+},
             marker && React.createElement('div', { className: `tt-marker ${marker === 'FINISH' ? 'finish' : ''}` }, marker),
             React.createElement('div', { className: 'tt-tile-num' }, `#${tile.tileNumber}`),
             hasIcon
@@ -603,6 +646,72 @@ function useSortable(containerRef, items, setItems) {
       );
     }
 
+function EffectBuilderPanel({ onBuild }) {
+  const [kind, setKind] = useState('none');
+  const [trigger, setTrigger] = useState('on_next_roll');
+  const [amount, setAmount] = useState('');
+  const [index, setIndex] = useState('');
+
+  const meta = EFFECTS.find(e => e.kind === kind) || EFFECTS[0];
+  const needsAmount = ['move_forward','move_back','double_next_roll','reverse_next_roll','shield_next_negative'].includes(kind) && meta.params.some(p=>p.name==='amount');
+  const needsIndex = ['teleport_to'].includes(kind);
+
+  const payload = {
+    kind,
+    ...(kind === 'none' ? {} : { trigger }),
+    ...(amount !== '' ? { amount: Number(amount) } : {}),
+    ...(index !== '' ? { index: Number(index) } : {}),
+  };
+
+  const onDragStart = (e) => {
+    const text = JSON.stringify(payload);
+    e.dataTransfer.setData('application/json', text);
+    e.dataTransfer.setData('text/tt-effect', text);  // custom mime for safety
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
+  return (
+    React.createElement('div', { className: 'space-y-3' },
+      React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+        React.createElement('div', null,
+          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Effect'),
+          React.createElement('select', { className: 'w-full rounded-lg border-slate-300', value: kind, onChange: e=> setKind(e.target.value) },
+            EFFECTS.map(x => React.createElement('option', { key: x.kind, value: x.kind }, x.label))
+          )
+        ),
+        (kind !== 'none') && React.createElement('div', null,
+          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Trigger'),
+          React.createElement('select', { className: 'w-full rounded-lg border-slate-300', value: trigger, onChange: e=> setTrigger(e.target.value) },
+            [
+              React.createElement('option', { key:'on_next_roll', value:'on_next_roll' }, 'on_next_roll'),
+              React.createElement('option', { key:'on_land', value:'on_land' }, 'on_land'),
+            ]
+          )
+        )
+      ),
+      (needsAmount) && React.createElement('div', null,
+        React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'amount'),
+        React.createElement('input', { className: 'w-full rounded-lg border-slate-300', type:'number', min:1, step:1, value: amount, onChange: e=> setAmount(e.target.value) })
+      ),
+      (needsIndex) && React.createElement('div', null,
+        React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'index'),
+        React.createElement('input', { className: 'w-full rounded-lg border-slate-300', type:'number', min:1, step:1, value: index, onChange: e=> setIndex(e.target.value) })
+      ),
+      React.createElement('div', { className: 'text-xs text-slate-500' }, 'Drag this token onto a tile to apply the effect:'),
+      React.createElement('div', {
+        className: 'tt-token',
+        draggable: true,
+        onDragStart,
+        title: 'Drag onto a tile to apply'
+      },
+        React.createElement('span', { className:'dot' }),
+        React.createElement('span', null, kind === 'none' ? 'None (clear effect)' : `${kind}${amount!==''?` amt=${amount}`:''}${index!==''?` idx=${index}`:''}`)
+      )
+    )
+  );
+}
+
+
     function Toolbar({ onNew, onClear, onImport, onExport, count }) {
       const fileRef = useRef(null);
 
@@ -651,28 +760,63 @@ function useSortable(containerRef, items, setItems) {
   return positions;
 }
 
+function buildSnakePositionsWithStart(countTiles, rowLen = 15) {
+  const total = countTiles + 1; // +1 for START
+  const positions = [];
+  let x = 0, y = 0, dir = 1;
+
+  // START at (0,0)
+  positions.push({ x, y, type: 'start' });
+
+  // Move to first tile slot to the right of START for horizontal run
+  if (total > 1) {
+    x += 1;
+    // Fill remaining slots
+    for (let placed = 1; placed < total;) {
+      // Horizontal run (rowLen - 1 because START already used one column on the very first row)
+      const run = positions.length === 1 ? (rowLen - 1) : rowLen;
+      for (let h = 0; h < run && placed < total; h++, placed++) {
+        positions.push({ x, y, type: 'h', hIndex: h });
+        if (h < run - 1 && placed < total) x += dir;
+      }
+      if (placed >= total) break;
+      // Vertical drop (one tile directly below current end)
+      y += 1; placed++;
+      positions.push({ x, y, type: 'drop' });
+      if (placed >= total) break;
+
+      // Flip direction and move to next horizontal row start
+      dir *= -1;
+      y += 1;
+      // Move to row start x
+      x += dir * (rowLen - 1);
+    }
+  }
+  return positions;
+}
+
 function PreviewGrid({ tiles, onSelect, selectedId, setTiles }) {
   const listRef = React.useRef(null);
   const ROW_LEN = 15;
 
-  // Precompute snake positions and “row start” flags for horizontal rows
-  const positions = React.useMemo(() => buildSnakePositions(tiles.length, ROW_LEN), [tiles.length]);
+  // positions[0] is START; positions[i+1] for tile i
+  const positions = React.useMemo(() => buildSnakePositionsWithStart(tiles.length, ROW_LEN), [tiles.length]);
 
-  // Compute which tile indices are the first of each horizontal row (for a clear row indicator)
+  // First-of-row marker: show ROW n on first 'h' slot of each horizontal row (excluding START & drops)
   const rowStartFlags = React.useMemo(() => {
     const flags = new Array(tiles.length).fill(false);
     let horizontalRowCount = 0;
-    for (let i = 0; i < positions.length; i++) {
+    for (let i = 1; i < positions.length; i++) { // start from 1 (skip START)
       const p = positions[i];
       if (p.type === 'h' && p.hIndex === 0) {
-        flags[i] = true;
+        flags[i - 1] = true; // i-1 because flags index maps to tile index
         horizontalRowCount++;
       }
     }
     return flags;
   }, [positions]);
 
-  // SortableJS wire-up (keep explicit positioning => last row remains right-anchored)
+  // Sortable (ignore fixed START)
   useSortable(listRef, tiles, (newArr) => {
     for (let i = 0; i < newArr.length; i++) {
       newArr[i] = { ...newArr[i], tileNumber: i + 1, id: String(i + 1) };
@@ -680,14 +824,16 @@ function PreviewGrid({ tiles, onSelect, selectedId, setTiles }) {
     setTiles(newArr.slice());
   });
 
-  // Cell style uses the precomputed (x,y) directly
-  const cellStyleFor = (i) => {
-    const p = positions[i];
+  const startPos = positions[0];
+  const cellStyleFor = (tileIndex) => {
+    const p = positions[tileIndex + 1];
     return { gridColumn: (p.x + 1), gridRow: (p.y + 1) };
   };
 
-  // We show “ROW n” only on the first tile of each horizontal row
-  let rowCounter = 0;
+  // START component (not selectable, not draggable)
+  const StartTile = () => React.createElement('div', { className: 'tt-tile', tabIndex: -1 },
+    React.createElement('div', { className: 'tt-tile-name' }, 'START')
+  );
 
   return (
     React.createElement(
@@ -697,37 +843,37 @@ function PreviewGrid({ tiles, onSelect, selectedId, setTiles }) {
         className: 'tt-grid',
         style: { gridTemplateColumns: `repeat(${ROW_LEN}, var(--tile))` },
       },
+      // Fixed START cell
+      React.createElement('div', {
+        key: 'START',
+        className: 'tt-cell tt-fixed tt-start',
+        style: { gridColumn: (startPos.x + 1), gridRow: (startPos.y + 1) }
+      }, React.createElement(StartTile)),
+
+      // All user tiles (1..N)
       tiles.map((t, i) => {
         let marker = null;
-        if (rowStartFlags[i]) {
-          rowCounter += 1;               // count horizontal rows only
-          marker = `ROW ${rowCounter}`;
-        } else if (i === 0) {
-          marker = 'START';
-        } else if (i === tiles.length - 1) {
-          marker = 'FINISH';
-        }
+        if (rowStartFlags[i]) marker = `ROW ${rowStartFlags.slice(0, i + 1).filter(Boolean).length}`;
+        if (i === tiles.length - 1) marker = 'FINISH'; // last playable marker wins
 
-        return React.createElement(
-          'div',
-          {
-            key: t.id,
-            'data-id': t.id,
-            className: 'tt-cell',
-            style: cellStyleFor(i),
-          },
+        return React.createElement('div', {
+          key: t.id,
+          'data-id': t.id,
+          className: 'tt-cell',
+          style: cellStyleFor(i),
+        },
           React.createElement(TileCard, {
             tile: t,
             onSelect: () => onSelect(t.id),
             selected: t.id === selectedId,
             marker,
+            onDropEffect: (eff) => applyEffectToTile(t.id, eff) // <- wire drop
           })
         );
       })
     )
   );
 }
-
     function BoardSettings({ count }) {
       const rows = Math.ceil(count / 15);
       return React.createElement('div', { className: 'flex flex-wrap items-center gap-4' },
@@ -742,6 +888,22 @@ function PreviewGrid({ tiles, onSelect, selectedId, setTiles }) {
     }
 
     function App() {
+      const applyEffectToTile = (tileId, eff) => {
+  setTiles(prev => prev.map(t => {
+    if (t.id !== tileId) return t;
+    if (!eff || eff.kind === 'none') {
+      return { ...t, effect: { kind: 'none' }, meta: { presetId: 'none', opts: {}, attached: false } };
+    }
+    const opts = {};
+    if ('amount' in eff) opts.amount = Number(eff.amount);
+    if ('index' in eff) opts.index = Number(eff.index);
+    return {
+      ...t,
+      effect: { ...eff },
+      meta: { presetId: eff.kind, opts, attached: true }
+    };
+  }));
+};
       const [tiles, setTiles] = useState(() => {
         try {
           const saved = JSON.parse(localStorage.getItem('tt-editor-tiles') || 'null');
@@ -870,15 +1032,21 @@ function PreviewGrid({ tiles, onSelect, selectedId, setTiles }) {
             ),
 
             // Right: Editor
-            React.createElement('aside', { className: 'rounded-2xl bg-white shadow-soft border border-slate-200 p-4' },
-              React.createElement('h2', { className: 'text-sm font-semibold text-slate-700 mb-3' }, 'Tile Editor'),
-              React.createElement(EditorPanel, {
-                tile: selectedTile,
-                setTile: replaceTile,
-                onDuplicate: duplicateSelected,
-                onDelete: deleteSelected
-              })
-            )
+React.createElement('aside', { className: 'rounded-2xl bg-white shadow-soft border border-slate-200 p-4 space-y-6' },
+  React.createElement('div', null,
+    React.createElement('h2', { className: 'text-sm font-semibold text-slate-700 mb-3' }, 'Tile Editor'),
+    React.createElement(EditorPanel, {
+      tile: selectedTile,
+      setTile: replaceTile,
+      onDuplicate: duplicateSelected,
+      onDelete: deleteSelected
+    })
+  ),
+  React.createElement('div', null,
+    React.createElement('h2', { className: 'text-sm font-semibold text-slate-700 mb-3' }, 'Effect Builder'),
+    React.createElement(EffectBuilderPanel, null)
+  )
+)
           ),
 
           React.createElement('footer', { className: 'text-center text-xs text-slate-500 pt-2' }, 'Made for GitHub Pages — no backend required.')
