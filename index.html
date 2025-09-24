@@ -126,8 +126,8 @@
 /* Keep the visual wrapper the same size as the tile while we fix offset */
 .tt-card {
   width: var(--tile);
-  padding: 0;                 /* no extra padding around the tile for now */
-  background: transparent;    /* remove white background to avoid size mismatch */
+  padding: 0;
+  background: transparent;
   border: none;
   box-shadow: none;
 }
@@ -151,6 +151,23 @@
     .tt-marker.finish {
       background: linear-gradient(180deg, #f59e0b, #b45309);
     }
+
+    /* Prevent selection/drag ghost blue marquee while dragging */
+body, .tt-grid, .tt-cell, .tt-tile, .tt-tile * {
+  user-select: none;
+}
+
+/* Prevent browser focus outlines on the tile itself */
+.tt-tile:focus,
+.tt-tile:focus-visible {
+  outline: none;
+}
+
+/* Prevent image-native drag ghost */
+.tt-tile img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
   </style>
 </head>
 <body class="bg-slate-50">
@@ -311,28 +328,36 @@ try {
     }, [containerRef, items, setItems]);
   }
 
-  function TileCard({ tile, onSelect, selected, marker }){
-    const eff = EFFECTS.find(e=>e.kind===tile.effect?.kind);
-    const hasIcon = Boolean(tile.iconFile);
-    return (
-      React.createElement('div', { className: `tt-card ${selected? 'ring-2 ring-indigo-400': ''}` },
-        React.createElement('div', { className: 'tt-tile shrink-0 drag-handle', onClick: onSelect },
-          marker && React.createElement('div', { className: `tt-marker ${marker==='FINISH' ? 'finish' : ''}` }, marker),
-          React.createElement('div', { className: 'tt-tile-num' }, `#${tile.tileNumber}`),
-          hasIcon
-            ? React.createElement('img', { src: tile.iconFile, className: 'tt-tile-icon', onError:(e)=>{ e.currentTarget.style.display='none'; } })
-            : React.createElement('div', { className: 'tt-tile-name' }, (tile.name || 'Untitled')),
-          (tile.effect && tile.effect.kind && tile.effect.kind !== 'none') &&
-            React.createElement('div', { className: 'tt-tile-badge', title: tile.effect.kind }, (tile.effect.kind||'').split('_').map(s=>s[0]).join('').toUpperCase())
-        ),
-        React.createElement('div', { className: 'min-w-0' },
-          React.createElement('div', { className: 'text-sm text-slate-600' }, eff? eff.label : (tile.effect?.kind === 'none' ? 'No effect' : (tile.effect?.kind || 'No effect'))),
-          React.createElement('div', { className: 'text-xs text-slate-500 truncate max-w-[22rem]' }, tile.name || 'Untitled Tile')
-        ),
-        React.createElement('div', { className: 'tt-id' }, tile.id)
+function TileCard({ tile, onSelect, selected, marker }) {
+  const eff = EFFECTS.find(e=>e.kind===tile.effect?.kind);
+  const hasIcon = Boolean(tile.iconFile);
+
+  return (
+    React.createElement('div', { className: selected ? 'rounded-xl ring-2 ring-indigo-400' : '' },
+      React.createElement('div', {
+        className: 'tt-tile drag-handle',   // tile itself is the handle
+        onClick: onSelect,
+        tabIndex: 0
+      },
+        marker && React.createElement('div', { className: `tt-marker ${marker==='FINISH' ? 'finish' : ''}` }, marker),
+        React.createElement('div', { className: 'tt-tile-num' }, `#${tile.tileNumber}`),
+        hasIcon
+          ? React.createElement('img', {
+              src: tile.iconFile,
+              className: 'tt-tile-icon',
+              draggable: false,
+              onError:(e)=>{ e.currentTarget.style.display='none'; }
+            })
+          : React.createElement('div', { className: 'tt-tile-name' }, (tile.name || 'Untitled')),
+        (tile.effect && tile.effect.kind && tile.effect.kind !== 'none') &&
+          React.createElement('div', { className: 'tt-tile-badge', title: tile.effect.kind },
+            (tile.effect.kind||'').split('_').map(s=>s[0]).join('').toUpperCase()
+          )
       )
-    );
-  }
+    )
+  );
+}
+
 
   function EffectEditor({ tile, onChange }){
     const eff = tile.effect || { kind: 'move_forward', trigger: 'on_next_roll' };
@@ -486,7 +511,12 @@ try {
         tiles.map((t, i)=> {
           const marker = i === 0 ? 'START' : (i === tiles.length - 1 ? 'FINISH' : null);
          return React.createElement('div', { key: t.id, 'data-id': t.id, className: 'tt-cell', style: cellStyleFor(i) },
-            React.createElement(TileCard, { tile: t, onSelect: ()=> onSelect(t.id), selected: t.id===selectedId, marker })
+            React.createElement('img', {
+  src: tile.iconFile,
+  className: 'tt-tile-icon',
+  draggable: false,
+  onError:(e)=>{ e.currentTarget.style.display='none'; }
+})
           );
         })
       )
