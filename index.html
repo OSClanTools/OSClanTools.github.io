@@ -246,11 +246,17 @@
             /* hide original tile while a mirror follows pointer */
         }
 
-        .tt-drag {
-            /* the mirror element that follows cursor */
-            opacity: .95;
-            cursor: grabbing !important;
-        }
+.tt-grid.tt-liveflow .tt-cell {
+  grid-column: auto !important;
+  grid-row: auto !important;
+}
+
+/* Lighter mirror to reduce lag behind cursor */
+.tt-drag { opacity: .98; cursor: grabbing !important; transition: none; }
+.tt-drag .tt-tile {
+  transform: scale(1.02); /* subtle */
+  box-shadow: 0 8px 12px rgba(0,0,0,.20), inset 0 0 0 1px rgba(0,0,0,.2);
+}
     </style>
 </head>
 
@@ -413,18 +419,18 @@
                 const sortable = new Sortable(containerRef.current, {
                     draggable: '.tt-cell',       // drag the fixed-size grid cell
                     handle: '.tt-tile',          // grab anywhere on the tile
-                    animation: 180,
+                    animation: 120,
                     easing: 'cubic-bezier(.2,.7,.2,1)',
 
                     // Smooth “pick up” + consistent mirror element (no giant ghost)
                     forceFallback: true,
                     fallbackOnBody: true,
-                    fallbackTolerance: 3,
+                    fallbackTolerance: 2,
                     delayOnTouchOnly: true,
-                    touchStartThreshold: 4,
+                    touchStartThreshold: 3,
 
                     // Snappy index switching while hovering other cells
-                    swapThreshold: 0.6,
+                    swapThreshold: 0.28,
                     invertSwap: true,
                     invertSwapThreshold: 0.8,
 
@@ -435,7 +441,7 @@
 
                     scroll: true,
                     scrollSensitivity: 40,
-                    scrollSpeed: 10,
+                    scrollSpeed: 12,
                     bubbleScroll: true,
 
                     onEnd: (evt) => {
@@ -445,11 +451,15 @@
                         // resequence path order
                         newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
                         setItems(newArr);
-                    }
-                });
-                return () => sortable.destroy();
-            }, [containerRef, items, setItems]);
-        }
+                    },
+                     onStart: () => {
+        if (containerRef.current) containerRef.current.classList.add('tt-liveflow');
+      },
+      ...(options || {})
+    });
+    return () => sortable.destroy();
+  }, [containerRef, items, setItems]);
+}
 
         function TileCard({ tile, onSelect, selected, marker }) {
             const eff = EFFECTS.find(e => e.kind === tile.effect?.kind);
@@ -661,7 +671,7 @@ function PreviewGrid({ tiles, onSelect, selectedId, setTiles /* no cols prop */,
           {
             key: t.id,
             'data-id': t.id,
-            className: 'tt-cell',
+            className: 'tt-tile',
             style: cellStyleFor(i),
           },
           React.createElement(TileCard, {
