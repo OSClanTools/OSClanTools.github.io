@@ -37,15 +37,12 @@
       min-height: 100vh;
     }
 
-    html, body { overflow-x: hidden; }
-
     :root {
       --tile: 84px;
       --bronze: #cd7f32;
       --bronze-dark: #8a531e;
       --ink: #2c1a0e;
     }
-    
 
     .drag-handle {
       cursor: grab;
@@ -167,8 +164,8 @@
 
 .tt-board-wrap {
   position: relative;
-  overflow: auto;           /* keep vertical scroll if tall */
-  overflow-x: hidden;       /* prevent horizontal scroll */
+  overflow: auto;           /* vertical scroll if tall */
+  overflow-x: hidden;       /* no horizontal scroll */
   padding: 8px;
   background: rgba(255, 255, 255, 0.35);
   border: 1px solid rgba(0, 0, 0, 0.06);
@@ -179,10 +176,9 @@
   /* cap to 15 rows (15 tiles + 14 gaps + padding) */
   max-height: calc((var(--tile) * 15) + (12px * 14) + 24px);
 
-  display: flex;            /* ⟵ center the grid */
+  display: flex;            /* center child grid */
   justify-content: center;
 }
-
     /* Keep the visual wrapper the same size as the tile while we fix offset */
     .tt-card {
       width: var(--tile);
@@ -197,17 +193,18 @@
       color: rgba(0, 0, 0, 0.55);
       margin-left: auto;
     }
-.tt-grid[data-scale] { }
+
+    .tt-grid[data-scale] {}
 
 .tt-grid {
   display: grid;
   grid-auto-rows: var(--tile);
   grid-auto-flow: row dense;
   align-content: start;
-  justify-content: start;   /* grid content starts at col 1 */
+  justify-content: start;   /* grid content starts at column 1 */
   gap: 12px;
 
-  /* Center + scale to fit (hook below sets transform) */
+  /* center and allow scale-to-fit */
   margin-inline: auto;
   transform-origin: top center;
 }
@@ -320,92 +317,112 @@
       border-radius: 9999px;
       background: #0ea5e9;
     }
+
     .tt-eff {
-  position: absolute;
-  left: 6px;
-  bottom: 6px;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: rgba(0,0,0,0.55);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.35);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-.tt-eff img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
+      position: absolute;
+      left: 6px;
+      bottom: 6px;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.55);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
 
-/* Fallback 2-letter badge if icon missing */
-.tt-eff-fallback {
-  font-family: 'RuneScape-Quill', Inter, ui-sans-serif;
-  color: #ffd166;
-  font-size: 11px;
-  text-shadow: 0 1px 0 rgba(0,0,0,.85);
-}
+    .tt-eff img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
 
-/* Token with icon */
-.tt-token img {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  display: block;
-  border-radius: 4px;
-}
-.panel-medieval {
-  position: relative;
-  background: url('assets/images/parchment.png') center/cover no-repeat, rgba(250, 245, 230, 0.86);
-  border: 3px solid #cd7f32;          /* bronze */
-  border-radius: 12px;
-  box-shadow: 0 6px 20px rgba(0,0,0,.12), inset 0 0 0 1.5px #8a531e;
-  overflow: hidden;
-}
-.panel-medieval::before {
-  content: "";
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse at top, rgba(255,255,255,.25), transparent 60%),
-              radial-gradient(ellipse at bottom, rgba(0,0,0,.08), transparent 60%);
-  pointer-events: none;
-}
+    /* Fallback 2-letter badge if icon missing */
+    .tt-eff-fallback {
+      font-family: 'RuneScape-Quill', Inter, ui-sans-serif;
+      color: #ffd166;
+      font-size: 11px;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, .85);
+    }
 
-/* Section heading in RuneScape-Quill */
-.heading-medieval {
-  font-family: 'RuneScape-Quill', Inter, ui-sans-serif;
-  letter-spacing: .3px;
-  color: #2c1a0e;
-  text-shadow: 0 1px 0 rgba(0,0,0,.35);
-}
+    /* Token with icon */
+    .tt-token img {
+      width: 16px;
+      height: 16px;
+      object-fit: contain;
+      display: block;
+      border-radius: 4px;
+    }
 
-/* Bronze button */
-.btn-bronze {
-  background: linear-gradient(180deg, #d8a25e, #b0792e);
-  color: #1b1108;
-  border: 1px solid #8a531e;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0,0,0,.2), inset 0 0 0 1px rgba(255,255,255,.25);
-  transition: transform .06s ease, box-shadow .12s ease;
-}
-.btn-bronze:hover { transform: translateY(-1px); }
-.btn-bronze:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+    .panel-medieval {
+      position: relative;
+      background: url('assets/images/parchment.png') center/cover no-repeat, rgba(250, 245, 230, 0.86);
+      border: 3px solid #cd7f32;
+      /* bronze */
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .12), inset 0 0 0 1.5px #8a531e;
+      overflow: hidden;
+    }
 
-/* Secondary "stone" button */
-.btn-stone {
-  background: linear-gradient(180deg, #e5e7eb, #cbd5e1);
-  color: #111827;
-  border: 1px solid #9ca3af;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0,0,0,.1), inset 0 0 0 1px rgba(255,255,255,.25);
-  transition: transform .06s ease, box-shadow .12s ease;
+    .panel-medieval::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top, rgba(255, 255, 255, .25), transparent 60%),
+        radial-gradient(ellipse at bottom, rgba(0, 0, 0, .08), transparent 60%);
+      pointer-events: none;
+    }
+
+    /* Section heading in RuneScape-Quill */
+    .heading-medieval {
+      font-family: 'RuneScape-Quill', Inter, ui-sans-serif;
+      letter-spacing: .3px;
+      color: #2c1a0e;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, .35);
+    }
+
+    /* Bronze button */
+    .btn-bronze {
+      background: linear-gradient(180deg, #d8a25e, #b0792e);
+      color: #1b1108;
+      border: 1px solid #8a531e;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, .2), inset 0 0 0 1px rgba(255, 255, 255, .25);
+      transition: transform .06s ease, box-shadow .12s ease;
+    }
+
+    .btn-bronze:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-bronze:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+    }
+
+    /* Secondary "stone" button */
+    .btn-stone {
+      background: linear-gradient(180deg, #e5e7eb, #cbd5e1);
+      color: #111827;
+      border: 1px solid #9ca3af;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, .1), inset 0 0 0 1px rgba(255, 255, 255, .25);
+      transition: transform .06s ease, box-shadow .12s ease;
+    }
+
+    .btn-stone:hover {
+      transform: translateY(-1px);
+    }
+    .editor-prose, .editor-prose * {
+  color: #000 !important;
+  text-shadow: 1px 0px 1px rgba(255,255,255,0.4);
 }
-.btn-stone:hover { transform: translateY(-1px); }
   </style>
 </head>
 
@@ -446,7 +463,7 @@
       return s;
     }
 
-    function useFitScale(gridRef, cols = 15) {
+function useFitScale(gridRef, cols = 15) {
   React.useEffect(() => {
     if (!gridRef.current) return;
     const el = gridRef.current;
@@ -456,11 +473,10 @@
       const root = getComputedStyle(document.documentElement);
       const tile = parseFloat(root.getPropertyValue('--tile')) || 84;
       const gap = 12; // must match .tt-grid gap
-      const full = cols * tile + (cols - 1) * gap;    // full pixel width of 15 columns
-      const avail = parent.clientWidth - 8 * 2;       // 8px padding on each side
-      const scale = Math.max(0.5, Math.min(1, avail / full)); // clamp 0.5..1 for readability
+      const full = cols * tile + (cols - 1) * gap;    // pixel width of the grid
+      const avail = parent.clientWidth - 8 * 2;       // wrapper padding both sides
+      const scale = Math.max(0.6, Math.min(1, avail / full)); // clamp for readability
       el.style.transform = `scale(${scale})`;
-      el.setAttribute('data-scale', String(scale));
     };
 
     const ro = new ResizeObserver(compute);
@@ -504,9 +520,9 @@
     }
 
     function getEffectIconUrl(kind) {
-  if (!kind || kind === 'none') return null;
-  return `assets/images/sstatuseffects/${kind}.png`;
-}
+      if (!kind || kind === 'none') return null;
+      return `assets/images/sstatuseffects/${kind}.png`;
+    }
 
     function makeDefaultTile(n) {
       return {
@@ -591,131 +607,131 @@
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
-function useSortable(containerRef, items, setItems) {
-  const { useEffect } = React;
+    function useSortable(containerRef, items, setItems) {
+      const { useEffect } = React;
 
-  useEffect(() => {
-    if (!containerRef.current) return;
+      useEffect(() => {
+        if (!containerRef.current) return;
 
-    const el = containerRef.current;
-    const sortable = new Sortable(el, {
-      dataIdAttr: 'data-id',
-      draggable: '.tt-cell:not(.tt-fixed)',  // ignore fixed first tile
-      handle: '.tt-tile',
-      animation: 90,
-      easing: 'cubic-bezier(.2,.7,.2,1)',
-      forceFallback: true,
-      fallbackOnBody: true,
-      fallbackTolerance: 2,
-      delayOnTouchOnly: true,
-      touchStartThreshold: 3,
-      swapThreshold: 0.28,
-      invertSwap: true,
-      invertSwapThreshold: 0.85,
-      ghostClass: 'tt-ghost',
-      chosenClass: 'tt-chosen',
-      dragClass: 'tt-drag',
-      scroll: true,
-      scrollSensitivity: 48,
-      scrollSpeed: 12,
-      bubbleScroll: true,
+        const el = containerRef.current;
+        const sortable = new Sortable(el, {
+          dataIdAttr: 'data-id',
+          draggable: '.tt-cell:not(.tt-fixed)',  // ignore fixed first tile
+          handle: '.tt-tile',
+          animation: 90,
+          easing: 'cubic-bezier(.2,.7,.2,1)',
+          forceFallback: true,
+          fallbackOnBody: true,
+          fallbackTolerance: 2,
+          delayOnTouchOnly: true,
+          touchStartThreshold: 3,
+          swapThreshold: 0.28,
+          invertSwap: true,
+          invertSwapThreshold: 0.85,
+          ghostClass: 'tt-ghost',
+          chosenClass: 'tt-chosen',
+          dragClass: 'tt-drag',
+          scroll: true,
+          scrollSensitivity: 48,
+          scrollSpeed: 12,
+          bubbleScroll: true,
 
-      onEnd: () => {
-        // 1) Read actual DOM order of ALL cells (fixed + draggables)
-        const nodes = Array.from(el.querySelectorAll('.tt-cell'));
-        const idsInDom = nodes
-          .map(n => n.getAttribute('data-id'))
-          .filter(Boolean);
+          onEnd: () => {
+            // 1) Read actual DOM order of ALL cells (fixed + draggables)
+            const nodes = Array.from(el.querySelectorAll('.tt-cell'));
+            const idsInDom = nodes
+              .map(n => n.getAttribute('data-id'))
+              .filter(Boolean);
 
-        // 2) Ensure the fixed first tile stays first
-        const fixedId = String(items[0]?.id);
-        const unique = Array.from(new Set(idsInDom));          // de-dupe just in case
-        const withoutFixed = unique.filter(id => id !== fixedId);
-        const finalIds = [fixedId, ...withoutFixed];
+            // 2) Ensure the fixed first tile stays first
+            const fixedId = String(items[0]?.id);
+            const unique = Array.from(new Set(idsInDom));          // de-dupe just in case
+            const withoutFixed = unique.filter(id => id !== fixedId);
+            const finalIds = [fixedId, ...withoutFixed];
 
-        // 3) Rebuild array from ids (fallback to old items if something is missing)
-        const byId = new Map(items.map(t => [String(t.id), t]));
-        const newArr = finalIds
-          .map(id => byId.get(String(id)))
-          .filter(Boolean);
+            // 3) Rebuild array from ids (fallback to old items if something is missing)
+            const byId = new Map(items.map(t => [String(t.id), t]));
+            const newArr = finalIds
+              .map(id => byId.get(String(id)))
+              .filter(Boolean);
 
-        // If for any reason lengths mismatch, bail out safely
-        if (!newArr.length || newArr.length !== items.length) {
-          console.warn('Sortable reorder mismatch; preserving previous order');
-          return;
-        }
+            // If for any reason lengths mismatch, bail out safely
+            if (!newArr.length || newArr.length !== items.length) {
+              console.warn('Sortable reorder mismatch; preserving previous order');
+              return;
+            }
 
-        // 4) Resequence 1..N
-        newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
+            // 4) Resequence 1..N
+            newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
 
-        setItems(newArr);
-      },
-    });
+            setItems(newArr);
+          },
+        });
 
-    return () => sortable.destroy();
-  }, [containerRef, items, setItems]);
-}
-function TileCard({ tile, onSelect, selected, marker, onDropEffect }) {
-  const kind = tile.effect?.kind || 'none';
-  const iconUrl = getEffectIconUrl(kind);
-  const hasIcon = Boolean(tile.iconFile);
-  const isStart = String(tile.id) === '1';
+        return () => sortable.destroy();
+      }, [containerRef, items, setItems]);
+    }
+    function TileCard({ tile, onSelect, selected, marker, onDropEffect }) {
+      const kind = tile.effect?.kind || 'none';
+      const iconUrl = getEffectIconUrl(kind);
+      const hasIcon = Boolean(tile.iconFile);
+      const isStart = String(tile.id) === '1';
 
-  // 2-letter fallback (e.g., 'move_forward' -> 'MF')
-  const short = (kind || '').split('_').map(s => s[0] || '').join('').slice(0,2).toUpperCase();
+      // 2-letter fallback (e.g., 'move_forward' -> 'MF')
+      const short = (kind || '').split('_').map(s => s[0] || '').join('').slice(0, 2).toUpperCase();
 
-  return (
-    React.createElement('div', { className: selected ? 'rounded-xl ring-2 ring-indigo-400' : '' },
-      React.createElement('div', {
-        className: 'tt-tile drag-handle',
-        onClick: onSelect,
-        tabIndex: 0,
-        onDragOver: (e) => {
-          if (e.dataTransfer.types.includes('text/tt-effect') || e.dataTransfer.types.includes('application/json')) {
-            e.preventDefault();
-            e.currentTarget.parentElement.classList.add('tt-drop-target');
-          }
-        },
-        onDragLeave: (e) => {
-          e.currentTarget.parentElement.classList.remove('tt-drop-target');
-        },
-        onDrop: (e) => {
-          e.preventDefault();
-          e.currentTarget.parentElement.classList.remove('tt-drop-target');
-          let json = e.dataTransfer.getData('text/tt-effect') || e.dataTransfer.getData('application/json');
-          if (!json) return;
-          try {
-            const eff = JSON.parse(json);
-            if (!eff || typeof eff !== 'object') return;
-            if (typeof onDropEffect === 'function') onDropEffect(eff);
-          } catch {}
-        }
-      },
-        (marker && React.createElement('div', { className: `tt-marker ${marker === 'FINISH' ? 'finish' : ''}` }, marker)),
-        React.createElement('div', { className: 'tt-tile-num' }, isStart ? '' : `#${tile.tileNumber}`),
-        !isStart && hasIcon
-          ? React.createElement('img', {
-              src: tile.iconFile,
-              className: 'tt-tile-icon',
-              draggable: false,
-              onError: (e) => { e.currentTarget.style.display = 'none'; }
-            })
-          : !isStart && React.createElement('div', { className: 'tt-tile-name' }, (tile.name || 'Untitled')),
-
-        // Effect icon overlay (only when not START and effect != none)
-        (!isStart && kind !== 'none') && React.createElement('div', { className: 'tt-eff', title: kind },
-          iconUrl
-            ? React.createElement('img', {
-                src: iconUrl,
-                alt: kind,
-                onError: (e) => { e.currentTarget.replaceWith(Object.assign(document.createElement('div'), { className: 'tt-eff-fallback', innerText: short })); }
+      return (
+        React.createElement('div', { className: selected ? 'rounded-xl ring-2 ring-indigo-400' : '' },
+          React.createElement('div', {
+            className: 'tt-tile drag-handle',
+            onClick: onSelect,
+            tabIndex: 0,
+            onDragOver: (e) => {
+              if (e.dataTransfer.types.includes('text/tt-effect') || e.dataTransfer.types.includes('application/json')) {
+                e.preventDefault();
+                e.currentTarget.parentElement.classList.add('tt-drop-target');
+              }
+            },
+            onDragLeave: (e) => {
+              e.currentTarget.parentElement.classList.remove('tt-drop-target');
+            },
+            onDrop: (e) => {
+              e.preventDefault();
+              e.currentTarget.parentElement.classList.remove('tt-drop-target');
+              let json = e.dataTransfer.getData('text/tt-effect') || e.dataTransfer.getData('application/json');
+              if (!json) return;
+              try {
+                const eff = JSON.parse(json);
+                if (!eff || typeof eff !== 'object') return;
+                if (typeof onDropEffect === 'function') onDropEffect(eff);
+              } catch { }
+            }
+          },
+            (marker && React.createElement('div', { className: `tt-marker ${marker === 'FINISH' ? 'finish' : ''}` }, marker)),
+            React.createElement('div', { className: 'tt-tile-num' }, isStart ? '' : `#${tile.tileNumber}`),
+            !isStart && hasIcon
+              ? React.createElement('img', {
+                src: tile.iconFile,
+                className: 'tt-tile-icon',
+                draggable: false,
+                onError: (e) => { e.currentTarget.style.display = 'none'; }
               })
-            : React.createElement('div', { className: 'tt-eff-fallback' }, short)
+              : !isStart && React.createElement('div', { className: 'tt-tile-name' }, (tile.name || 'Untitled')),
+
+            // Effect icon overlay (only when not START and effect != none)
+            (!isStart && kind !== 'none') && React.createElement('div', { className: 'tt-eff', title: kind },
+              iconUrl
+                ? React.createElement('img', {
+                  src: iconUrl,
+                  alt: kind,
+                  onError: (e) => { e.currentTarget.replaceWith(Object.assign(document.createElement('div'), { className: 'tt-eff-fallback', innerText: short })); }
+                })
+                : React.createElement('div', { className: 'tt-eff-fallback' }, short)
+            )
+          )
         )
-      )
-    )
-  );
-}
+      );
+    }
 
 
     function EffectEditor({ tile, onChange }) {
@@ -760,16 +776,16 @@ function TileCard({ tile, onSelect, selected, marker, onDropEffect }) {
               }, EFFECTS.map(x => React.createElement('option', { key: x.kind, value: x.kind }, x.label)))
             ),
             (eff.kind !== 'none') &&
-React.createElement('div', { className: 'flex items-center gap-2' },
-  React.createElement('div', { className: 'tt-eff' },
-    React.createElement('img', {
-      src: getEffectIconUrl(eff.kind),
-      alt: eff.kind,
-      onError: (e)=>{ e.currentTarget.replaceWith(Object.assign(document.createElement('div'), { className: 'tt-eff-fallback', innerText: (eff.kind||'').split('_').map(s=>s[0]).join('').toUpperCase().slice(0,2) })); }
-    })
-  ),
-  React.createElement('div', { className: 'text-xs text-slate-600' }, `Effect: ${eff.kind}${eff.amount!=null?` | amount=${eff.amount}`:''}${eff.index!=null?` | index=${eff.index}`:''}`)
-),
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              React.createElement('div', { className: 'tt-eff' },
+                React.createElement('img', {
+                  src: getEffectIconUrl(eff.kind),
+                  alt: eff.kind,
+                  onError: (e) => { e.currentTarget.replaceWith(Object.assign(document.createElement('div'), { className: 'tt-eff-fallback', innerText: (eff.kind || '').split('_').map(s => s[0]).join('').toUpperCase().slice(0, 2) })); }
+                })
+              ),
+              React.createElement('div', { className: 'text-xs text-slate-600' }, `Effect: ${eff.kind}${eff.amount != null ? ` | amount=${eff.amount}` : ''}${eff.index != null ? ` | index=${eff.index}` : ''}`)
+            ),
             (eff.kind !== 'none') && React.createElement('div', null,
               React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Trigger'),
               React.createElement('select', {
@@ -800,24 +816,24 @@ React.createElement('div', { className: 'flex items-center gap-2' },
 
     function EditorPanel({ tile, setTile, onDuplicate, onDelete }) {
       if (!tile) return React.createElement('div', { className: 'text-slate-500' }, 'Select a tile to edit.');
-  const isStart = String(tile.id) === '1';
+      const isStart = String(tile.id) === '1';
 
-  if (isStart) {
-    return React.createElement('div', { className: 'space-y-3' },
-      React.createElement('div', { className: 'text-sm text-emerald-700 font-medium' }, 'START tile (fixed)'),
-      React.createElement('p', { className: 'text-xs text-slate-600' }, 'This tile is fixed, cannot be dragged, and cannot have a name or effect.'),
-      React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-        React.createElement('div', null,
-          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'ID'),
-          React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.id, disabled: true, readOnly: true })
-        ),
-        React.createElement('div', null,
-          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
-          React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.tileNumber, disabled: true, readOnly: true })
-        )
-      )
-    );
-  }
+      if (isStart) {
+        return React.createElement('div', { className: 'space-y-3' },
+          React.createElement('div', { className: 'text-sm text-emerald-700 font-medium' }, 'START tile (fixed)'),
+          React.createElement('p', { className: 'text-xs text-slate-600' }, 'This tile is fixed, cannot be dragged, and cannot have a name or effect.'),
+          React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'ID'),
+              React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.id, disabled: true, readOnly: true })
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
+              React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.tileNumber, disabled: true, readOnly: true })
+            )
+          )
+        );
+      }
 
       const update = (patch) => setTile({ ...tile, ...patch });
 
@@ -861,80 +877,80 @@ React.createElement('div', { className: 'flex items-center gap-2' },
       );
     }
 
-function EffectBuilderPanel() {
-  const [kind, setKind] = useState('none');
-  const [trigger, setTrigger] = useState('on_next_roll');
-  const [amount, setAmount] = useState('');
-  const [index, setIndex] = useState('');
+    function EffectBuilderPanel() {
+      const [kind, setKind] = useState('none');
+      const [trigger, setTrigger] = useState('on_next_roll');
+      const [amount, setAmount] = useState('');
+      const [index, setIndex] = useState('');
 
-  const meta = EFFECTS.find(e => e.kind === kind) || EFFECTS[0];
-  const needsAmount = meta.params.some(p => p.name === 'amount');
-  const needsIndex  = meta.params.some(p => p.name === 'index');
-  const iconUrl = getEffectIconUrl(kind);
+      const meta = EFFECTS.find(e => e.kind === kind) || EFFECTS[0];
+      const needsAmount = meta.params.some(p => p.name === 'amount');
+      const needsIndex = meta.params.some(p => p.name === 'index');
+      const iconUrl = getEffectIconUrl(kind);
 
-  const payload = {
-    kind,
-    ...(kind === 'none' ? {} : { trigger }),
-    ...(amount !== '' ? { amount: Number(amount) } : {}),
-    ...(index  !== '' ? { index:  Number(index)  } : {}),
-  };
-
-  const onDragStart = (e) => {
-    const text = JSON.stringify(payload);
-    e.dataTransfer.setData('application/json', text);
-    e.dataTransfer.setData('text/tt-effect', text);
-    e.dataTransfer.effectAllowed = 'copy';
-
-    // Try a custom drag image using the effect icon (fallback to the token element)
-    if (iconUrl) {
-      const img = new Image();
-      img.src = iconUrl;
-      img.onload = () => {
-        e.dataTransfer.setDragImage(img, 10, 10);
+      const payload = {
+        kind,
+        ...(kind === 'none' ? {} : { trigger }),
+        ...(amount !== '' ? { amount: Number(amount) } : {}),
+        ...(index !== '' ? { index: Number(index) } : {}),
       };
-    }
-  };
 
-  return (
-    React.createElement('div', { className: 'space-y-3' },
-      React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-        React.createElement('div', null,
-          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Effect'),
-          React.createElement('select', { className: 'w-full rounded-lg border-slate-300', value: kind, onChange: e => setKind(e.target.value) },
-            EFFECTS.map(x => React.createElement('option', { key: x.kind, value: x.kind }, x.label))
-          )
-        ),
-        (kind !== 'none') && React.createElement('div', null,
-          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Trigger'),
-          React.createElement('select', { className: 'w-full rounded-lg border-slate-300', value: trigger, onChange: e => setTrigger(e.target.value) },
-            [
-              React.createElement('option', { key: 'on_next_roll', value: 'on_next_roll' }, 'on_next_roll'),
-              React.createElement('option', { key: 'on_land', value: 'on_land' }, 'on_land'),
-            ]
+      const onDragStart = (e) => {
+        const text = JSON.stringify(payload);
+        e.dataTransfer.setData('application/json', text);
+        e.dataTransfer.setData('text/tt-effect', text);
+        e.dataTransfer.effectAllowed = 'copy';
+
+        // Try a custom drag image using the effect icon (fallback to the token element)
+        if (iconUrl) {
+          const img = new Image();
+          img.src = iconUrl;
+          img.onload = () => {
+            e.dataTransfer.setDragImage(img, 10, 10);
+          };
+        }
+      };
+
+      return (
+        React.createElement('div', { className: 'space-y-3' },
+          React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Effect'),
+              React.createElement('select', { className: 'w-full rounded-lg border-slate-300', value: kind, onChange: e => setKind(e.target.value) },
+                EFFECTS.map(x => React.createElement('option', { key: x.kind, value: x.kind }, x.label))
+              )
+            ),
+            (kind !== 'none') && React.createElement('div', null,
+              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Trigger'),
+              React.createElement('select', { className: 'w-full rounded-lg border-slate-300', value: trigger, onChange: e => setTrigger(e.target.value) },
+                [
+                  React.createElement('option', { key: 'on_next_roll', value: 'on_next_roll' }, 'on_next_roll'),
+                  React.createElement('option', { key: 'on_land', value: 'on_land' }, 'on_land'),
+                ]
+              )
+            )
+          ),
+          (needsAmount) && React.createElement('div', null,
+            React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'amount'),
+            React.createElement('input', { className: 'w-full rounded-lg border-slate-300', type: 'number', min: 1, step: 1, value: amount, onChange: e => setAmount(e.target.value) })
+          ),
+          (needsIndex) && React.createElement('div', null,
+            React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'index'),
+            React.createElement('input', { className: 'w-full rounded-lg border-slate-300', type: 'number', min: 1, step: 1, value: index, onChange: e => setIndex(e.target.value) })
+          ),
+          React.createElement('div', { className: 'text-xs text-slate-500' }, 'Drag this token onto a tile to apply the effect:'),
+          React.createElement('div', {
+            className: 'tt-token',
+            draggable: true,
+            onDragStart,
+            title: 'Drag onto a tile to apply'
+          },
+            iconUrl && React.createElement('img', { src: iconUrl, alt: kind, onError: (e) => { e.currentTarget.remove(); } }),
+            React.createElement('span', null, kind === 'none' ? 'None (clear effect)' : `${kind}${amount !== '' ? ` amt=${amount}` : ''}${index !== '' ? ` idx=${index}` : ''}`)
           )
         )
-      ),
-      (needsAmount) && React.createElement('div', null,
-        React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'amount'),
-        React.createElement('input', { className: 'w-full rounded-lg border-slate-300', type: 'number', min: 1, step: 1, value: amount, onChange: e => setAmount(e.target.value) })
-      ),
-      (needsIndex) && React.createElement('div', null,
-        React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'index'),
-        React.createElement('input', { className: 'w-full rounded-lg border-slate-300', type: 'number', min: 1, step: 1, value: index, onChange: e => setIndex(e.target.value) })
-      ),
-      React.createElement('div', { className: 'text-xs text-slate-500' }, 'Drag this token onto a tile to apply the effect:'),
-      React.createElement('div', {
-        className: 'tt-token',
-        draggable: true,
-        onDragStart,
-        title: 'Drag onto a tile to apply'
-      },
-        iconUrl && React.createElement('img', { src: iconUrl, alt: kind, onError: (e)=>{ e.currentTarget.remove(); } }),
-        React.createElement('span', null, kind === 'none' ? 'None (clear effect)' : `${kind}${amount !== '' ? ` amt=${amount}` : ''}${index !== '' ? ` idx=${index}` : ''}`)
-      )
-    )
-  );
-}
+      );
+    }
 
 
     function Toolbar({ onNew, onClear, onImport, onExport, count }) {
@@ -954,37 +970,37 @@ function EffectBuilderPanel() {
       return (
         React.createElement('div', { className: 'flex flex-wrap items-center gap-2' },
           React.createElement('button', { className: 'btn-bronze', onClick: onNew }, 'Add Tile'),
-React.createElement('button', { className: 'btn-stone',  onClick: onClear }, 'Clear'),
-React.createElement('button', { className: 'btn-bronze', onClick: triggerImport }, 'Import JSON'),
-React.createElement('button', { className: 'btn-bronze', onClick: onExport }, 'Export JSON'),
+          React.createElement('button', { className: 'btn-stone', onClick: onClear }, 'Clear'),
+          React.createElement('button', { className: 'btn-bronze', onClick: triggerImport }, 'Import JSON'),
+          React.createElement('button', { className: 'btn-bronze', onClick: onExport }, 'Export JSON'),
 
           React.createElement('input', { ref: fileRef, type: 'file', accept: '.json,application/json', className: 'hidden', onChange: onFile }),
           React.createElement('div', { className: 'ml-auto text-sm text-slate-600' }, `${count} tile${count === 1 ? '' : 's'}`)
         )
       );
     }
-function buildSnakePositions(count, ROW_LEN = 15) {
-  const positions = [];
-  let x = 0, y = 0, dir = 1;
+    function buildSnakePositions(count, ROW_LEN = 15) {
+      const positions = [];
+      let x = 0, y = 0, dir = 1;
 
-  for (let i = 0; i < count;) {
-    // Horizontal run
-    for (let h = 0; h < ROW_LEN && i < count; h++, i++) {
-      positions.push({ x, y, type: 'h', hIndex: h, rowIndex: Math.floor(positions.length / ROW_LEN) });
-      if (h < ROW_LEN - 1 && i < count) x += dir;
+      for (let i = 0; i < count;) {
+        // Horizontal run
+        for (let h = 0; h < ROW_LEN && i < count; h++, i++) {
+          positions.push({ x, y, type: 'h', hIndex: h, rowIndex: Math.floor(positions.length / ROW_LEN) });
+          if (h < ROW_LEN - 1 && i < count) x += dir;
+        }
+        // Vertical drop
+        if (i < count) {
+          y++;
+          positions.push({ x, y, type: 'drop' });
+          i++;
+        }
+        // Next row
+        dir *= -1;
+        y++;
+      }
+      return positions;
     }
-    // Vertical drop
-    if (i < count) {
-      y++;
-      positions.push({ x, y, type: 'drop' });
-      i++;
-    }
-    // Next row
-    dir *= -1;
-    y++;
-  }
-  return positions;
-}
 
     function buildSnakePositionsWithStart(countTiles, rowLen = 15) {
       const total = countTiles + 1; // +1 for START
@@ -1021,85 +1037,36 @@ function buildSnakePositions(count, ROW_LEN = 15) {
       return positions;
     }
 
-function PreviewGrid({ tiles, onSelect, selectedId, setTiles, onDropEffect }) {
-  const listRef = React.useRef(null);
-  const ROW_LEN = 15;
+function PreviewGrid({ tiles, onSelect, selectedId, setTiles, cols, snake }) {
+  const gridRef = useRef(null);
 
-  useFitScale(listRef, ROW_LEN);
+  // keep Sortable on the grid element
+  useSortable(gridRef, tiles, (newArr) => { setTiles(newArr); });
 
-  // Build positions for ALL playable tiles (1..N)
-  const positions = React.useMemo(
-    () => buildSnakePositions(tiles.length, ROW_LEN),
-    [tiles.length]
-  );
+  // scale to fit width; keeps content centered
+  useFitScale(gridRef, Math.max(1, cols|0));
 
-  // Identify first-of-row (horizontal) positions AFTER the first row
-  const rowStartFlags = React.useMemo(() => {
-    const flags = new Array(tiles.length).fill(false);
-    let seenRows = 0;
-    // A horizontal row starts when type==='h' && hIndex===0
-    for (let i = 0; i < positions.length; i++) {
-      const p = positions[i];
-      if (p.type === 'h' && p.hIndex === 0) {
-        // skip the very first horizontal row (no "ROW 1" label)
-        if (seenRows > 0) {
-          // map back to tile index: positions index == tile index for horizontals & drops
-          flags[i] = true;
-        }
-        seenRows++;
-      }
-    }
-    return flags;
-  }, [positions]);
-
-  // Sortable (exclude first tile from dragging by CSS class)
-  useSortable(listRef, tiles, (newArr) => {
-    // Reorder by DOM and resequence 1..N
-    newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
-    setTiles(newArr.slice());
-  });
-
-  const cellStyleFor = (i) => {
-    const p = positions[i];
-    return { gridColumn: (p.x + 1), gridRow: (p.y + 1) };
+  const cellStyleFor = (index) => {
+    const row = Math.floor(index / Math.max(1, cols));
+    const colBase = index % Math.max(1, cols);
+    const col = snake && (row % 2 === 1) ? (Math.max(1, cols) - 1 - colBase) : colBase;
+    return { gridColumn: (col + 1), gridRow: (row + 1) };
   };
 
   return (
-    React.createElement(
-      'div',
-      {
-        ref: listRef,
+    React.createElement('div', { className: 'tt-board-wrap' },
+      React.createElement('div', {
+        ref: gridRef,
         className: 'tt-grid',
-        style: { gridTemplateColumns: `repeat(${ROW_LEN}, var(--tile))` },
+        style: { gridTemplateColumns: `repeat(${Math.max(1, cols)}, var(--tile))` }
       },
-      tiles.map((t, i) => {
-        // Markers: START on first tile, FINISH on last; ROW labels on subsequent horizontal rows
-        let marker = null;
-        if (i === 0) marker = 'START';
-        else if (i === tiles.length - 1) marker = 'FINISH';
-        else if (rowStartFlags[i]) {
-          // Compute visible row # (1st horizontal row had no label)
-          const rowsBefore = rowStartFlags.slice(0, i + 1).filter(Boolean).length;
-          marker = `ROW ${rowsBefore + 1}`; // “ROW 2”, “ROW 3”, …
-        }
-
-        return React.createElement(
-          'div',
-          {
-            key: t.id,
-            'data-id': t.id,
-            className: `tt-cell ${i === 0 ? 'tt-fixed' : ''}`, // first tile is fixed
-            style: cellStyleFor(i),
-          },
-React.createElement(TileCard, {
-  tile: t,
-  onSelect: () => onSelect(t.id),
-  selected: t.id === selectedId,
-  marker,
-  onDropEffect: (eff) => onDropEffect(t.id, eff)
-})
-        );
-      })
+        tiles.map((t, i) => {
+          const marker = i === 0 ? 'START' : (i === tiles.length - 1 ? 'FINISH' : null);
+          return React.createElement('div', { key: t.id, 'data-id': t.id, style: cellStyleFor(i) },
+            React.createElement(TileCard, { tile: t, onSelect: () => onSelect(t.id), selected: t.id === selectedId, marker })
+          );
+        })
+      )
     )
   );
 }
@@ -1243,9 +1210,9 @@ React.createElement(TileCard, {
             )
           ),
 
-         React.createElement('div', { className: 'panel-medieval p-4' },
-  React.createElement(Toolbar, { onNew: addTile, onClear: clearAll, onImport: importJSON, onExport: exportJSON, count: tiles.length })
-),
+          React.createElement('div', { className: 'panel-medieval p-4' },
+            React.createElement(Toolbar, { onNew: addTile, onClear: clearAll, onImport: importJSON, onExport: exportJSON, count: tiles.length })
+          ),
 
           React.createElement('div', { className: 'panel-medieval p-4' },
             React.createElement(BoardSettings, { count: tiles.length })
@@ -1256,18 +1223,18 @@ React.createElement(TileCard, {
             React.createElement('div', { className: 'space-y-3' },
               React.createElement('div', { className: 'tt-board-wrap' },
                 React.createElement(PreviewGrid, {
-  tiles,
-  onSelect: setSelectedId,
-  selectedId,
-  setTiles,
-  onDropEffect: (tileId, eff) => applyEffectToTile(tileId, eff)
-})
+                  tiles,
+                  onSelect: setSelectedId,
+                  selectedId,
+                  setTiles,
+                  onDropEffect: (tileId, eff) => applyEffectToTile(tileId, eff)
+                })
               ),
               React.createElement('div', { className: 'text-xs text-slate-500' }, 'Tip: drag a tile to reorder. Export to download the JSON.')
             ),
 
             // Right: Editor
-            React.createElement('aside', { className: 'panel-medieval p-4 space-y-6' },
+            React.createElement('aside', { className: 'panel-medieval p-4 space-y-6 editor-prose' },
               React.createElement('div', null,
                 React.createElement('h2', { className: 'text-sm font-semibold text-slate-700 mb-3' }, 'Tile Editor'),
                 React.createElement(EditorPanel, {
