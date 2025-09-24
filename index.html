@@ -536,7 +536,7 @@ function TileCard({ tile, onSelect, selected, marker }) {
     );
   }
 
-function PreviewGrid({ tiles, onSelect, selectedId, setTiles, cols, snake }) {
+function PreviewGrid({ tiles, onSelect, selectedId, setTiles }) {
   const listRef = React.useRef(null);
   useSortable(listRef, tiles, (newArr) => {
     for (let i = 0; i < newArr.length; i++) {
@@ -545,7 +545,7 @@ function PreviewGrid({ tiles, onSelect, selectedId, setTiles, cols, snake }) {
     setTiles(newArr.slice());
   });
 
-  const colsSafe = Math.max(1, Math.min(15, Number(cols) || 1)); // clamp 1..15
+  const colsSafe = 15; // fixed
 
   const cellStyleFor = (pathIndex) => {
     const row = Math.floor(pathIndex / colsSafe);
@@ -583,19 +583,19 @@ function PreviewGrid({ tiles, onSelect, selectedId, setTiles, cols, snake }) {
   );
 }
 
-  function BoardSettings({ cols, setCols, snake, setSnake, count }){
-    return React.createElement('div', { className: 'flex flex-wrap items-center gap-4' },
-      React.createElement('div', null,
-        React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Board width (columns)'),
-        React.createElement('input', { type: 'number', min: 1, max: 20, className: 'w-28 rounded-lg border-slate-300', value: cols, onChange: e=> setCols(Math.max(1, Math.min(20, Number(e.target.value)||1))) })
-      ),
-      React.createElement('div', { className: 'flex items-center gap-2' },
-        React.createElement('input', { id: 'snake', type: 'checkbox', className: 'rounded border-slate-300', checked: !!snake, onChange: e=> setSnake(e.target.checked) }),
-        React.createElement('label', { htmlFor: 'snake', className: 'text-sm text-slate-700' }, 'Snake path (alternate row direction)')
-      ),
-      React.createElement('div', { className: 'ml-auto text-sm text-slate-600' }, `Rows: ${Math.ceil(count / Math.max(1, cols))}`)
-    );
-  }
+function BoardSettings({ snake, setSnake, count }) {
+  const rows = Math.ceil(count / 15);
+  return React.createElement('div', { className: 'flex flex-wrap items-center gap-4' },
+    React.createElement('div', null,
+      React.createElement('div', { className: 'text-sm text-slate-700' }, 'Columns: 15 (fixed)')
+    ),
+    React.createElement('div', { className: 'flex items-center gap-2' },
+      React.createElement('input', { id: 'snake', type: 'checkbox', className: 'rounded border-slate-300', checked: !!snake, onChange: e=> setSnake(e.target.checked) }),
+      React.createElement('label', { htmlFor: 'snake', className: 'text-sm text-slate-700' }, 'Snake path (alternate row direction)')
+    ),
+    React.createElement('div', { className: 'ml-auto text-sm text-slate-600' }, `Rows: ${rows}`)
+  );
+}
 
   function App(){
     const [tiles, setTiles] = useState(()=>{
@@ -603,14 +603,11 @@ function PreviewGrid({ tiles, onSelect, selectedId, setTiles, cols, snake }) {
         if(Array.isArray(saved) && saved.length) return saved; }catch{}
       return Array.from({length: 10}, (_,i)=> makeDefaultTile(i+1));
     });
-    const [cols, setCols] = useState(()=>{
-      const n = Number(localStorage.getItem('tt-editor-cols')); return Number.isFinite(n) && n>0 ? n : 5;
-    });
+const cols = 15;
     const [snake, setSnake] = useState(()=> localStorage.getItem('tt-editor-snake') === '1');
     const [selectedId, setSelectedId] = useState(tiles[0]?.id || null);
 
     useEffect(()=>{ localStorage.setItem('tt-editor-tiles', JSON.stringify(tiles)); }, [tiles]);
-    useEffect(()=>{ localStorage.setItem('tt-editor-cols', String(cols)); }, [cols]);
     useEffect(()=>{ localStorage.setItem('tt-editor-snake', snake ? '1' : '0'); }, [snake]);
 
     const selectedTile = useMemo(()=> tiles.find(t=>t.id===selectedId) || null, [tiles, selectedId]);
@@ -711,14 +708,14 @@ function PreviewGrid({ tiles, onSelect, selectedId, setTiles, cols, snake }) {
         ),
 
         React.createElement('div', { className: 'rounded-2xl bg-white shadow-soft border border-slate-200 p-4' },
-          React.createElement(BoardSettings, { cols, setCols, snake, setSnake, count: tiles.length })
+          React.createElement(BoardSettings, { snake, setSnake, count: tiles.length })
         ),
 
 React.createElement('div', { className: 'tt-layout' },
   // Left: Board area
   React.createElement('div', { className: 'space-y-3' },
     React.createElement('div', { className: 'tt-board-wrap' },
-      React.createElement(PreviewGrid, { tiles, onSelect: setSelectedId, selectedId, setTiles, cols, snake })
+     React.createElement(PreviewGrid, { tiles, onSelect: setSelectedId, selectedId, setTiles, snake })
     ),
     React.createElement('div', { className: 'text-xs text-slate-500' }, 'Tip: drag a tile to reorder. Export to download the JSON.')
   ),
