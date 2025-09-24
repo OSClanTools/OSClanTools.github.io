@@ -143,40 +143,32 @@
         }
 
         /* Each grid cell = exactly one tile */
-        .tt-cell {
-            width: var(--tile);
-            height: var(--tile);
-            position: relative;
-            transition: transform .16s cubic-bezier(.2, .7, .2, 1), box-shadow .16s cubic-bezier(.2, .7, .2, 1);
-        }
+.tt-cell {
+  width: var(--tile);
+  height: var(--tile);
+  position: relative;
+  transition: transform .16s cubic-bezier(.2,.7,.2,1), box-shadow .16s cubic-bezier(.2,.7,.2,1);
+}
+.tt-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 16px;
+}
 
-        /* Board + Editor two-column layout */
-        .tt-layout {
-            display: grid;
-            grid-template-columns: 1fr 360px;
-            /* board | editor */
-            gap: 16px;
-        }
+@media (max-width: 1024px) {
+  .tt-layout { grid-template-columns: 1fr; }
+}
 
-        /* Stack on narrow screens */
-        @media (max-width: 1024px) {
-            .tt-layout {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* Scrollable/wrapping board area */
-        .tt-board-wrap {
-            position: relative;
-            overflow: auto;
-            /* scroll if too wide/tall */
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.35);
-            border: 1px solid rgba(0, 0, 0, 0.06);
-            border-radius: 14px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-            backdrop-filter: blur(2px);
-        }
+.tt-board-wrap {
+  position: relative;
+  overflow: auto;
+  padding: 8px;
+  background: rgba(255,255,255,0.35);
+  border: 1px solid rgba(0,0,0,0.06);
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+  backdrop-filter: blur(2px);
+}
 
 
         /* Keep the visual wrapper the same size as the tile while we fix offset */
@@ -195,10 +187,14 @@
         }
 
         /* Grid container for board preview */
-        .tt-grid {
-            gap: 12px;
-        }
-
+.tt-grid {
+  display: grid;
+  grid-auto-rows: var(--tile);
+  grid-auto-flow: row dense;   /* enables smooth cascading when dragging */
+  align-content: start;
+  justify-content: start;
+  gap: 12px;
+}
         /* Start/Finish marker badges */
         .tt-marker {
             position: absolute;
@@ -294,6 +290,39 @@
             for (let i = 0; i < size; i++) s += chars[Math.floor(Math.random() * chars.length)];
             return s;
         }
+
+        function useAutoCols(maxCols = 15) {
+  const gridRef = React.useRef(null);
+  const [cols, setCols] = React.useState(1);
+
+  React.useEffect(() => {
+    if (!gridRef.current) return;
+
+    const el = gridRef.current;
+
+    const compute = () => {
+      // Read CSS --tile and gap to estimate how many columns fit
+      const root = getComputedStyle(document.documentElement);
+      const tile = parseFloat(root.getPropertyValue('--tile')) || 84;
+      const gap = 12; // keep in sync with .tt-grid gap
+      const width = el.clientWidth; // visible width of grid container
+      // columns = floor((width + gap) / (tile + gap)), clamped 1..maxCols
+      const perRow = Math.max(1, Math.min(maxCols, Math.floor((width + gap) / (tile + gap))));
+      setCols(perRow);
+    };
+
+    // ResizeObserver to track container width
+    const ro = new ResizeObserver(() => compute());
+    ro.observe(el);
+
+    // First compute now (in case observer fires late)
+    compute();
+
+    return () => ro.disconnect();
+  }, [maxCols]);
+
+  return [gridRef, cols];
+}
 
         function makeDefaultTile(n) {
             return {
@@ -593,60 +622,59 @@
             );
         }
 
-        function PreviewGrid({ tiles, onSelect, selectedId, setTiles }) {
-            const listRef = React.useRef(null);
+function PreviewGrid({ tiles, onSelect, selectedId, setTiles /* no cols prop */, /* snake removed here */ }) {
+  const [gridRef, colsAuto] = useAutoCols(15);    // auto-fit up to 15 columns
+  const listRef = gridRef;                         // Sortable attaches to the same element
 
-            // SortableJS wire-up (we'll keep your handler):
-            useSortable(listRef, tiles, (newArr) => {
-                // resequence IDs & numbers 1..N
-                for (let i = 0; i < newArr.length; i++) {
-                    newArr[i] = { ...newArr[i], tileNumber: i + 1, id: String(i + 1) };
-                }
-                setTiles(newArr.slice());
-            });
+  // Keep snake always ON (Step 6)
+  const snakeFlag = true;
 
-            // STEP 5: lock columns to 15
-            const colsSafe = 15;
+  // SortableJS wire-up
+  useSortable(listRef, tiles, (newArr) => {
+    // Resequence path order => tileNumber & id (1..N)
+    for (let i = 0; i < newArr.length; i++) {
+      newArr[i] = { ...newArr[i], tileNumber: i + 1, id: String(i + 1) };
+    }
+    setTiles(newArr.slice());
+  });
 
-            // Guard snake to a boolean even if not passed
-            const snakeFlag = true;
+  // Compute grid placement by path index, using the auto-detected column count
+  const cellStyleFor = (pathIndex) => {
+    const colsSafe = Math.max(1, colsAuto | 0);
+    const row = Math.floor(pathIndex / colsSafe);
+    const colBase = pathIndex % colsSafe;
+    const col = snakeFlag && (row % 2 === 1) ? (colsSafe - 1 - colBase) : colBase;
+    return { gridColumn: col + 1, gridRow: row + 1 };
+  };
 
-            const cellStyleFor = (pathIndex) => {
-                const row = Math.floor(pathIndex / colsSafe);
-                const colBase = pathIndex % colsSafe;
-                const col = snakeFlag && (row % 2 === 1) ? (colsSafe - 1 - colBase) : colBase;
-                return { gridColumn: col + 1, gridRow: row + 1 };
-                // NOTE: we rely on CSS grid to wrap rows; no manual wrapping needed
-            };
-
-            return (
-                React.createElement(
-                    'div',
-                    {
-                        ref: listRef,
-                        className: 'tt-grid',
-                        style: { gridTemplateColumns: `repeat(${colsSafe}, var(--tile))` },
-                    },
-                    tiles.map((t, i) =>
-                        React.createElement(
-                            'div',
-                            {
-                                key: t.id,
-                                'data-id': t.id,
-                                className: 'tt-cell',
-                                style: cellStyleFor(i),
-                            },
-                            React.createElement(TileCard, {
-                                tile: t,
-                                onSelect: () => onSelect(t.id),
-                                selected: t.id === selectedId,
-                                marker: i === 0 ? 'START' : (i === tiles.length - 1 ? 'FINISH' : null),
-                            })
-                        )
-                    )
-                )
-            );
-        }
+  return (
+    React.createElement(
+      'div',
+      {
+        ref: listRef,
+        className: 'tt-grid',
+        style: { gridTemplateColumns: `repeat(${Math.max(1, colsAuto)}, var(--tile))` },
+      },
+      tiles.map((t, i) =>
+        React.createElement(
+          'div',
+          {
+            key: t.id,
+            'data-id': t.id,
+            className: 'tt-cell',
+            style: cellStyleFor(i),
+          },
+          React.createElement(TileCard, {
+            tile: t,
+            onSelect: () => onSelect(t.id),
+            selected: t.id === selectedId,
+            marker: i === 0 ? 'START' : (i === tiles.length - 1 ? 'FINISH' : null),
+          })
+        )
+      )
+    )
+  );
+}
 
         function BoardSettings({ count }) {
             const rows = Math.ceil(count / 15);
