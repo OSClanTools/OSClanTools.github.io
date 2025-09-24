@@ -474,7 +474,7 @@ function useSortable(containerRef, items, setItems) {
     const el = containerRef.current;
     const sortable = new Sortable(el, {
       dataIdAttr: 'data-id',
-      draggable: '.tt-cell:not(.tt-fixed)',  // 👈 ignore first tile
+      draggable: '.tt-cell:not(.tt-fixed)',  // ignore fixed first tile
       handle: '.tt-tile',
       animation: 90,
       easing: 'cubic-bezier(.2,.7,.2,1)',
@@ -495,13 +495,33 @@ function useSortable(containerRef, items, setItems) {
       bubbleScroll: true,
 
       onEnd: () => {
-        // Reconstruct order by data-id (ignores fixed cells automatically)
-        const order = sortable.toArray();
-        const byId = new Map(items.map(t => [String(t.id), t]));
-        const newArr = order.map(id => ({ ...byId.get(String(id)) }));
+        // 1) Read actual DOM order of ALL cells (fixed + draggables)
+        const nodes = Array.from(el.querySelectorAll('.tt-cell'));
+        const idsInDom = nodes
+          .map(n => n.getAttribute('data-id'))
+          .filter(Boolean);
 
-        // Resequence 1..N
+        // 2) Ensure the fixed first tile stays first
+        const fixedId = String(items[0]?.id);
+        const unique = Array.from(new Set(idsInDom));          // de-dupe just in case
+        const withoutFixed = unique.filter(id => id !== fixedId);
+        const finalIds = [fixedId, ...withoutFixed];
+
+        // 3) Rebuild array from ids (fallback to old items if something is missing)
+        const byId = new Map(items.map(t => [String(t.id), t]));
+        const newArr = finalIds
+          .map(id => byId.get(String(id)))
+          .filter(Boolean);
+
+        // If for any reason lengths mismatch, bail out safely
+        if (!newArr.length || newArr.length !== items.length) {
+          console.warn('Sortable reorder mismatch; preserving previous order');
+          return;
+        }
+
+        // 4) Resequence 1..N
         newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
+
         setItems(newArr);
       },
     });
@@ -509,7 +529,6 @@ function useSortable(containerRef, items, setItems) {
     return () => sortable.destroy();
   }, [containerRef, items, setItems]);
 }
-
     function TileCard({ tile, onSelect, selected, marker, onDropEffect }) {
       const eff = EFFECTS.find(e => e.kind === tile.effect?.kind);
       const hasIcon = Boolean(tile.iconFile);
