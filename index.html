@@ -536,22 +536,30 @@ function TileCard({ tile, onSelect, selected, marker }) {
     );
   }
 
-function PreviewGrid({ tiles, onSelect, selectedId, setTiles }) {
+function PreviewGrid({ tiles, onSelect, selectedId, setTiles, /* cols, */ snake }) {
   const listRef = React.useRef(null);
+
+  // SortableJS wire-up (we'll keep your handler):
   useSortable(listRef, tiles, (newArr) => {
+    // resequence IDs & numbers 1..N
     for (let i = 0; i < newArr.length; i++) {
       newArr[i] = { ...newArr[i], tileNumber: i + 1, id: String(i + 1) };
     }
     setTiles(newArr.slice());
   });
 
-  const colsSafe = 15; // fixed
+  // STEP 5: lock columns to 15
+  const colsSafe = 15;
+
+  // Guard snake to a boolean even if not passed
+  const snakeFlag = !!snake;
 
   const cellStyleFor = (pathIndex) => {
     const row = Math.floor(pathIndex / colsSafe);
     const colBase = pathIndex % colsSafe;
-    const col = snake && (row % 2 === 1) ? (colsSafe - 1 - colBase) : colBase;
+    const col = snakeFlag && (row % 2 === 1) ? (colsSafe - 1 - colBase) : colBase;
     return { gridColumn: col + 1, gridRow: row + 1 };
+    // NOTE: we rely on CSS grid to wrap rows; no manual wrapping needed
   };
 
   return (
