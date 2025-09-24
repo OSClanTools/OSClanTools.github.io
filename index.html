@@ -444,23 +444,24 @@
                     scrollSpeed: 12,
                     bubbleScroll: true,
 
-                    onEnd: (evt) => {
-                        const newArr = items.slice();
-                        const [moved] = newArr.splice(evt.oldIndex, 1);
-                        newArr.splice(evt.newIndex, 0, moved);
-                        // resequence path order
-                        newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
-                        setItems(newArr);
-                    },
-                     onStart: () => {
-        if (containerRef.current) containerRef.current.classList.add('tt-liveflow');
+     onEnd: (evt) => {
+        // Default reorder logic (if caller didn't supply their own)
+        const newArr = items.slice();
+        const [moved] = newArr.splice(evt.oldIndex, 1);
+        newArr.splice(evt.newIndex, 0, moved);
+        newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
+        setItems(newArr);
+        // Call caller’s onEnd too, if provided
+        if (typeof opts.onEnd === 'function') opts.onEnd(evt);
       },
-      ...(options || {})
-    });
-    return () => sortable.destroy();
-  }, [containerRef, items, setItems]);
-}
 
+      // Allow caller overrides/extra handlers
+      ...opts,
+    });
+
+    return () => sortable.destroy();
+  }, [containerRef, items, setItems, /* reinit if opts shape changes: */ JSON.stringify(Object.keys(opts || {}))]);
+}
         function TileCard({ tile, onSelect, selected, marker }) {
             const eff = EFFECTS.find(e => e.kind === tile.effect?.kind);
             const hasIcon = Boolean(tile.iconFile);
