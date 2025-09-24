@@ -543,58 +543,62 @@
       return [];
     }
 
-    function normalizeImportedTiles(list) {
-      const tiles = [];
-      for (let i = 0; i < list.length; i++) {
-        const t = list[i] || {};
-        const num = coerceNumber(t.tileNumber ?? t.id ?? i + 1, i + 1);
-        const id = String(t.id ?? num);
-        const clean = {
-          id,
-          tileNumber: num,
-          name: String(t.name ?? `Tile ${num}`),
-          desc: String(t.desc ?? ''),
-          iconFile: String(t.iconFile ?? t.iconUrl ?? t.iconURL ?? t.icon ?? t.icon_link ?? t.iconLink ?? ''),
-          effect: (() => {
-            const eff = t.effect || {};
-            if (eff == null || eff.kind === 'none') return { kind: 'none' };
-            const kind = String(eff.kind || 'move_forward');
-            const meta = EFFECTS.find(e => e.kind === kind) || EFFECTS[0];
-            const trigger = eff.trigger || meta.defaultTrigger || 'on_next_roll';
-            const obj = { kind, trigger };
-            if ('amount' in eff) obj.amount = coerceNumber(eff.amount, 1);
-            if ('index' in eff) obj.index = coerceNumber(eff.index, 1);
-            return obj;
-          })(),
-          meta: (() => {
-            const eff = t.effect || {};
-            if (eff == null || eff.kind === 'none') return { presetId: 'none', opts: {}, attached: false };
-            const kind = String(eff.kind || 'move_forward');
-            const opts = {};
-            if ('amount' in eff) opts.amount = coerceNumber(eff.amount, 1);
-            if ('index' in eff) opts.index = coerceNumber(eff.index, 1);
-            return { presetId: kind, opts, attached: true };
-          })()
-        };
-        tiles.push(clean);
-      }
+function normalizeImportedTiles(list) {
+  const tiles = [];
+  for (let i = 0; i < list.length; i++) {
+    const t = list[i] || {};
+    const num = coerceNumber(t.tileNumber ?? t.id ?? i + 1, i + 1);
+    const id = String(t.id ?? num);
 
-      tiles.sort((a, b) => a.tileNumber - b.tileNumber);
-      tiles.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
-      return tiles;
+    // Accept multiple icon field names
+    const icon =
+      t.iconFile ?? t.iconUrl ?? t.iconURL ?? t.icon ?? t.icon_link ?? t.iconLink ?? '';
+
+    // Treat missing OR empty OR 'none' effect as none
+    const rawEff = t.effect;
+    const hasEff =
+      rawEff &&
+      typeof rawEff === 'object' &&
+      typeof rawEff.kind === 'string' &&
+      rawEff.kind !== 'none' &&
+      rawEff.kind.trim() !== '';
+
+    let effect, meta;
+    if (!hasEff) {
+      effect = { kind: 'none' };
+      meta   = { presetId: 'none', opts: {}, attached: false };
+    } else {
+      const kind = String(rawEff.kind).trim();
+      const def  = EFFECTS.find(e => e.kind === kind);
+      const trigger = rawEff.trigger || def?.defaultTrigger || 'on_next_roll';
+
+      const obj = { kind, trigger };
+      if ('amount' in rawEff) obj.amount = coerceNumber(rawEff.amount, 1);
+      if ('index'  in rawEff) obj.index  = coerceNumber(rawEff.index,  1);
+
+      const opts = {};
+      if ('amount' in obj) opts.amount = obj.amount;
+      if ('index'  in obj) opts.index  = obj.index;
+
+      effect = obj;
+      meta   = { presetId: kind, opts, attached: true };
     }
 
-    function download(filename, text) {
-      const blob = new Blob([text], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = filename; a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
+    tiles.push({
+      id,
+      tileNumber: num,
+      name: String(t.name ?? `Tile ${num}`),
+      desc: String(t.desc ?? ''),
+      iconFile: String(icon),
+      effect,
+      meta,
+    });
+  }
 
-    function randomInt(min, max) {
-  const a = Math.ceil(min), b = Math.floor(max);
-  return Math.floor(Math.random() * (b - a + 1)) + a;
+  // Sort and resequence IDs/indices 1..N
+  tiles.sort((a, b) => a.tileNumber - b.tileNumber);
+  tiles.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
+  return tiles;
 }
 
 // Scale the percent of effected tiles by board size
