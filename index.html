@@ -917,97 +917,104 @@
       );
     }
 
-    function EditorPanel({ tile, setTile, onDuplicate, onDelete }) {
-      if (!tile) return React.createElement('div', { className: 'text-slate-500' }, 'Select a tile to edit.');
-      const isStart = String(tile.id) === '1';
+function EditorPanel({ tile, setTile, onDuplicate, onDelete }) {
+  const { useState } = React;
+  const [openPicker, setOpenPicker] = useState(false);
 
-      if (isStart) {
-        return React.createElement('div', { className: 'space-y-3' },
-          React.createElement('div', { className: 'text-sm text-emerald-700 font-medium' }, 'START tile (fixed)'),
-          React.createElement('p', { className: 'text-xs text-slate-600' }, 'This tile is fixed, cannot be dragged, and cannot have a name or effect.'),
-          React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-            (() => {
-              const [openPicker, setOpenPicker] = React.useState(false);
-              return React.createElement(React.Fragment, null,
-                React.createElement('div', null,
-                  React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Icon URL (iconFile)'),
-                  React.createElement('input', {
-                    className: 'w-full rounded-lg border-slate-300',
-                    placeholder: 'https://… or use “Pick from OSRS Wiki”',
-                    value: tile.iconFile,
-                    onChange: e => update({ iconFile: e.target.value })
-                  }),
-                  React.createElement('div', { className: 'flex gap-2 mt-2' },
-                    React.createElement('button', {
-                      className: 'btn-stone',
-                      onClick: () => setOpenPicker(true)
-                    }, 'Pick from OSRS Wiki'),
-                    React.createElement('button', {
-                      className: 'btn-stone',
-                      onClick: () => update({ iconFile: '' })
-                    }, 'Clear')
-                  )
-                ),
-                openPicker && React.createElement(IconPicker, {
-                  initialQuery: (tile.name || '').replace(/\s+/g, ' ').trim(),
-                  onPick: (url) => {
-                    if (String(tile.id) === '1') return;  // ← guard
-                    update({ iconFile: url });            // writes to the currently edited tile
-                  },
-                  onClose: () => setOpenPicker(false)
-                })
-              );
-            })(),
+  if (!tile) {
+    return React.createElement('div', { className: 'text-slate-500' }, 'Select a tile to edit.');
+  }
 
-            React.createElement('div', null,
-              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
-              React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.tileNumber, disabled: true, readOnly: true })
-            )
-          )
-        );
-      }
+  const isStart = String(tile.id) === '1';
 
-      const update = (patch) => setTile({ ...tile, ...patch });
-
-      return (
-        React.createElement('div', { className: 'space-y-4' },
-          React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-            React.createElement('div', null,
-              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'ID'),
-              React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.id, disabled: true, readOnly: true })
-            ),
-            React.createElement('div', null,
-              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
-              React.createElement('input', { className: 'w-full rounded-lg border-slate-300', type: 'number', value: tile.tileNumber, onChange: e => update({ tileNumber: coerceNumber(e.target.value, tile.tileNumber) }) })
-            )
-          ),
-
-          React.createElement('div', null,
-            React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Name'),
-            React.createElement('input', { className: 'w-full rounded-lg border-slate-300', value: tile.name, onChange: e => update({ name: e.target.value }) })
-          ),
-          React.createElement('div', null,
-            React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Description'),
-            React.createElement('textarea', { className: 'w-full rounded-lg border-slate-300', rows: 4, value: tile.desc, onChange: e => update({ desc: e.target.value }) })
-          ),
-
-          React.createElement('div', null,
-            React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Icon URL (iconFile)'),
-            React.createElement('input', { className: 'w-full rounded-lg border-slate-300', placeholder: 'https://...', value: tile.iconFile, onChange: e => update({ iconFile: e.target.value }) })
-          ),
-
-          React.createElement('div', null,
-            React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-2' }, 'Effect'),
-            React.createElement(EffectEditor, { tile, onChange: (patch) => update(patch) })
-          ),
-
-          React.createElement('div', { className: 'flex gap-2' },
-            React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700', onClick: onDuplicate }, 'Duplicate'),
-            React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700', onClick: onDelete }, 'Delete')
-          )
+  if (isStart) {
+    // START tile: fixed, no icon picker here
+    return React.createElement('div', { className: 'space-y-3' },
+      React.createElement('div', { className: 'text-sm text-emerald-700 font-medium' }, 'START tile (fixed)'),
+      React.createElement('p', { className: 'text-xs text-slate-600' }, 'This tile is fixed, cannot be dragged, and cannot have a name or effect.'),
+      React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+        React.createElement('div', null,
+          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'ID'),
+          React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.id, disabled: true, readOnly: true })
+        ),
+        React.createElement('div', null,
+          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
+          React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.tileNumber, disabled: true, readOnly: true })
         )
-      );
-    }
+      )
+    );
+  }
+
+  const update = (patch) => setTile({ ...tile, ...patch });
+
+  return React.createElement('div', { className: 'space-y-4' },
+    React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+      React.createElement('div', null,
+        React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'ID'),
+        React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.id, disabled: true, readOnly: true })
+      ),
+      React.createElement('div', null,
+        React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
+        React.createElement('input', {
+          className: 'w-full rounded-lg border-slate-300',
+          type: 'number',
+          value: tile.tileNumber,
+          onChange: e => update({ tileNumber: Number.isFinite(Number(e.target.value)) ? Number(e.target.value) : tile.tileNumber })
+        })
+      )
+    ),
+
+    React.createElement('div', null,
+      React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Name'),
+      React.createElement('input', { className: 'w-full rounded-lg border-slate-300', value: tile.name, onChange: e => update({ name: e.target.value }) })
+    ),
+
+    React.createElement('div', null,
+      React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Description'),
+      React.createElement('textarea', { className: 'w-full rounded-lg border-slate-300', rows: 4, value: tile.desc, onChange: e => update({ desc: e.target.value }) })
+    ),
+
+    // ICON URL + PICKER (non-start tiles only)
+    React.createElement('div', null,
+      React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Icon URL (iconFile)'),
+      React.createElement('input', {
+        className: 'w-full rounded-lg border-slate-300',
+        placeholder: 'https://… or use “Pick from OSRS Wiki”',
+        value: tile.iconFile,
+        onChange: e => update({ iconFile: e.target.value })
+      }),
+      React.createElement('div', { className: 'flex gap-2 mt-2' },
+        React.createElement('button', {
+          className: 'btn-stone',
+          onClick: () => setOpenPicker(true)
+        }, 'Pick from OSRS Wiki'),
+        React.createElement('button', {
+          className: 'btn-stone',
+          onClick: () => update({ iconFile: '' })
+        }, 'Clear')
+      )
+    ),
+
+    // Effect editor
+    React.createElement('div', null,
+      React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-2' }, 'Effect'),
+      React.createElement(EffectEditor, { tile, onChange: (patch) => update(patch) })
+    ),
+
+    React.createElement('div', { className: 'flex gap-2' },
+      React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700', onClick: onDuplicate }, 'Duplicate'),
+      React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700', onClick: onDelete }, 'Delete')
+    ),
+
+    // Modal appears only for non-start tiles
+    openPicker && React.createElement(IconPicker, {
+      initialQuery: (tile.name || '').replace(/\s+/g, ' ').trim(),
+      onPick: (url) => update({ iconFile: url }),
+      onClose: () => setOpenPicker(false)
+    })
+  );
+}
+
 
     function EffectBuilderPanel() {
       const [kind, setKind] = useState('none');
