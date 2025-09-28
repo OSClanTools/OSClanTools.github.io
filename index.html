@@ -461,43 +461,91 @@
 
     const DEFAULT_ICON = 'https://cdn.jsdelivr.net/gh/tabler/tabler-icons@latest/icons/outlet.svg';
 
-    // --- OSRS Wiki endpoints (no auth required)
-    const WIKI_API = 'https://oldschool.runescape.wiki/api.php';
-    const WIKI_FILEPATH = 'https://oldschool.runescape.wiki/Special:FilePath/';
+// Small backoff for 429s (retry once)
+async function backoffFetch(url, opts = {}, tries = 2) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    const res = await fetch(url, opts).catch(e => (last = e, null));
+    if (!res) continue;
+    if (res.status !== 429) return res;
+    const retryAfter = Number(res.headers.get('retry-after')) || 0;
+    const wait = retryAfter ? retryAfter * 1000 : (600 + Math.random() * 600);
+    await new Promise(r => setTimeout(r, wait));
+  }
+  throw last || new Error('Rate limited by OSRS Wiki');
+}
 
-    // Build a Special:FilePath URL (stable; auto-redirects to the real CDN file).
-    // The `width` param usually works on MediaWiki setups for a thumb-scaled image.
-    function wikiFilePathUrl(filename, width = 128) {
-      const base = WIKI_FILEPATH + encodeURIComponent(filename);
-      return width ? `${base}?width=${width}` : base;
+// Session memo to avoid refetching
+const WIKI_MEMO = new Map(); // key: `ii|width|filename` -> {url, thumburl}
+
+// Resolve file metadata (thumb + original) for many files in one POST
+async function wikiGetImageInfo(fileNames, width = 192) {
+  const results = [];
+
+  // split into chunks of ~40 to keep POST small
+  for (let i = 0; i < fileNames.length; i += 40) {
+    const chunk = fileNames.slice(i, i + 40);
+    const toFetch = [];
+    const cached = [];
+
+    for (const name of chunk) {
+      const k = `ii|${width}|${name}`;
+      const hit = WIKI_MEMO.get(k);
+      if (hit) cached.push({ name, ...hit });
+      else toFetch.push(name);
     }
 
-    // Find up to `limit` files whose names start with `prefix`.
-    // Returns [{ name, fileUrl, thumbUrl }]
-    async function wikiSearchFiles(prefix, limit = 50) {
-      const qs = new URLSearchParams({
+    if (toFetch.length) {
+      const body = new URLSearchParams({
         action: 'query',
         format: 'json',
-        origin: '*',         // required for browser CORS
-        list: 'allimages',
-        aiprefix: prefix || '',
-        ailimit: String(limit),
+        origin: '*',              // CORS
+        prop: 'imageinfo',
+        iiprop: 'url',
+        iiurlwidth: String(width),
+        titles: toFetch.map(n => `File:${n}`).join('|'),
       });
-      const res = await fetch(`${WIKI_API}?${qs.toString()}`);
-      const json = await res.json().catch(() => ({}));
-      const imgs = json?.query?.allimages || [];
-      return imgs.map(img => {
-        const name = img.name || img.title?.replace(/^File:/, '') || '';
-        return {
-          name,
-          // direct/original file if the API includes url; else fall back to FilePath
-          fileUrl: img.url || wikiFilePathUrl(name, 0),
-          // pick a friendly thumb size for the picker grid
-          thumbUrl: wikiFilePathUrl(name, 128),
-        };
-      });
+
+      const res = await backoffFetch(WIKI_API, { method: 'POST', body });
+      const json = await res.json();
+
+      const pages = json?.query?.pages || {};
+      for (const p of Object.values(pages)) {
+        const title = (p.title || '').replace(/^File:/, '');
+        const ii = (p.imageinfo && p.imageinfo[0]) || {};
+        const rec = { name: title, fileUrl: ii.url || '', thumbUrl: ii.thumburl || ii.url || '' };
+        results.push(rec);
+        if (title) WIKI_MEMO.set(`ii|${width}|${title}`, { fileUrl: rec.fileUrl, thumbUrl: rec.thumbUrl });
+      }
     }
 
+    results.push(...cached);
+  }
+
+  return results;
+}
+
+// Search by filename prefix, then enrich with imageinfo (thumbs at 192px)
+async function wikiSearchFiles(prefix, limit = 40, thumbWidth = 192) {
+  const qs = new URLSearchParams({
+    action: 'query',
+    format: 'json',
+    origin: '*',
+    list: 'allimages',
+    aiprefix: prefix || '',
+    ailimit: String(Math.min(limit, 50)),
+  });
+
+  const res = await backoffFetch(`${WIKI_API}?${qs.toString()}`);
+  const json = await res.json().catch(() => ({}));
+  const names = (json?.query?.allimages || []).map(img =>
+    img.name || (img.title || '').replace(/^File:/, '')
+  ).filter(Boolean);
+
+  // one batched resolve → direct CDN thumbnails (no Special:FilePath)
+  const info = await wikiGetImageInfo(names, thumbWidth);
+  return info; // [{ name, fileUrl, thumbUrl }]
+}
 
     function nanoid(size = 8) {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -1100,17 +1148,24 @@ function EditorPanel({ tile, setTile, onDuplicate, onDelete }) {
 
       const QUICK = ['Zulrah', 'Vorkath', 'Barrows', 'Slayer', 'Dragon', 'Herblore', 'Agility', 'Fishing', 'Runecraft'];
 
-      const run = async (query) => {
-        setLoading(true); setErr('');
-        try {
-          const list = await wikiSearchFiles(query.trim(), 60);
-          setItems(list);
-        } catch (e) {
-          setErr('Failed to fetch from OSRS Wiki. Try again.');
-        } finally {
-          setLoading(false);
-        }
-      };
+const run = async (query) => {
+  setLoading(true); setErr('');
+  try {
+    const list = await wikiSearchFiles(query.trim(), 40, 192); // 192px thumbs
+    setItems(list);
+  } catch (e) {
+    setErr('Wiki rate-limited or unreachable. Try again in a moment.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// ... in the grid button onClick:
+onClick: () => {
+  // Use direct 192px thumb (already resolved), no further fetch
+  onPick?.(f.thumbUrl, f);
+  onClose?.();
+}
 
       useEffect(() => { if (q) run(q); }, []); // pre-run if initialQuery exists
 
