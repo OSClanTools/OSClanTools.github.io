@@ -534,30 +534,56 @@ async function wikiGetImageInfo(fileNames, width = 192) {
   return results;
 }
 
-// Search by filename prefix, then enrich with imageinfo (thumbs at 192px)
+// Search by case-insensitive file title prefix, then enrich with imageinfo (thumbs at 192px)
 async function wikiSearchFiles(prefix, limit = 40, thumbWidth = 192) {
   const q = (prefix || '').trim();
-  if (q.length < 2) return []; // avoid hitting API for empty/1-char inputs
+  if (q.length < 2) return [];
 
-  const memoKey = `ai|${q}|${thumbWidth}`;
+  const memoKey = `ps|${q}|${thumbWidth}`;
   if (WIKI_QUERY_MEMO.has(memoKey)) return WIKI_QUERY_MEMO.get(memoKey);
 
-  const qs = new URLSearchParams({
+  // 1) Primary: prefixsearch on File namespace (6) — case-insensitive title prefix
+  const qsPS = new URLSearchParams({
     action: 'query',
     format: 'json',
     origin: '*',
-    list: 'allimages',
-    aiprefix: q,
-    ailimit: String(Math.min(limit, 50)),
+    list: 'prefixsearch',
+    pssearch: q,
+    psnamespace: '6',                // File:
+    pslimit: String(Math.min(limit, 50)),
     maxage: '86400',
     smaxage: '86400',
   });
 
-  const res = await backoffFetch(`${WIKI_API}?${qs.toString()}`);
-  const json = await res.json().catch(() => ({}));
-  const names = (json?.query?.allimages || [])
-    .map(img => img.name || (img.title || '').replace(/^File:/, ''))
-    .filter(Boolean);
+  let names = [];
+  try {
+    const res = await backoffFetch(`${WIKI_API}?${qsPS.toString()}`);
+    const json = await res.json().catch(() => ({}));
+    names = (json?.query?.prefixsearch || [])
+      .map(p => (p.title || '').replace(/^File:/, ''))
+      .filter(Boolean);
+  } catch {}
+
+  // 2) Fallback: allimages (helps if prefixsearch returns nothing for some rare inputs)
+  if (!names.length) {
+    const qsAI = new URLSearchParams({
+      action: 'query',
+      format: 'json',
+      origin: '*',
+      list: 'allimages',
+      aiprefix: q[0].toUpperCase() + q.slice(1),  // nudge case
+      ailimit: String(Math.min(limit, 50)),
+      maxage: '86400',
+      smaxage: '86400',
+    });
+    try {
+      const resAI = await backoffFetch(`${WIKI_API}?${qsAI.toString()}`);
+      const jsonAI = await resAI.json().catch(() => ({}));
+      names = (jsonAI?.query?.allimages || [])
+        .map(img => img.name || (img.title || '').replace(/^File:/, ''))
+        .filter(Boolean);
+    } catch {}
+  }
 
   const info = names.length ? await wikiGetImageInfo(names, thumbWidth) : [];
   WIKI_QUERY_MEMO.set(memoKey, info);
@@ -1179,64 +1205,67 @@ function IconPicker({ initialQuery = '', onPick, onClose }) {
     }
   };
 
-  return React.createElement('div', { className: 'fixed inset-0 z-50 grid place-items-center bg-black/50 p-4' },
-    React.createElement('div', { className: 'w-full max-w-3xl panel-medieval p-4 relative' },
-      React.createElement('button', { className: 'absolute right-3 top-3 btn-stone', onClick: onClose }, 'Close'),
+return React.createElement('div', { className: 'fixed inset-0 z-50 grid place-items-center bg-black/50 p-4' },
+  React.createElement('div', { className: 'w-full max-w-3xl panel-medieval p-4' },
 
-      React.createElement('div', { className: 'mb-3 flex items-center gap-2' },
-React.createElement('input', {
-  className: 'w-full rounded-lg border-slate-300',
-  placeholder: 'Search file name prefix (e.g., "Zulrah", "Dragon", "Herblore")',
-  value: q,
-  onChange: e => setQ(e.target.value),
-  onKeyDown: (e) => {
-    if (e.key === 'Enter' && !loading && q.trim().length >= 2) {
-      e.preventDefault();
-      run(q);
-    }
-  }
-}),
-        React.createElement('button', {
-          className: 'btn-bronze',
-          disabled: (q.trim().length < 2) || loading,
-          onClick: () => run(q)
-        }, loading ? 'Searching…' : 'Search')
-      ),
-
-      React.createElement('div', { className: 'flex flex-wrap gap-2 mb-3' },
-        QUICK.map(term =>
-          React.createElement('button', {
-            key: term,
-            className: 'btn-stone',
-            onClick: () => { setQ(term); run(term); }
-          }, term)
-        )
-      ),
-
-      err && React.createElement('div', { className: 'text-sm text-rose-600' }, err),
-
-React.createElement('div', { className: 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[60vh] overflow-auto' },
-  items.map(f =>
-    React.createElement('button', {
-      key: f.name,
-      className: 'rounded-lg border border-slate-200 bg-white/70 hover:shadow soft p-2 flex flex-col items-center gap-2',
-      onClick: () => {                 // ⟵ apply + close
-        onPick?.(f.thumbUrl || f.fileUrl, f);
-        onClose?.();
-      }
-    },
-      React.createElement('img', {
-        src: f.thumbUrl || f.fileUrl,
-        alt: f.name,
-        className: 'w-20 h-20 object-contain',
-        onError: (e) => { e.currentTarget.style.visibility = 'hidden'; }
+    // Header row: input + Search + Close (right-aligned)
+    React.createElement('div', { className: 'mb-3 flex items-center gap-2' },
+      React.createElement('input', {
+        className: 'w-full rounded-lg border-slate-300',
+        placeholder: 'Search file name prefix (e.g., "Zulrah", "Dragon", "Herblore")',
+        value: q,
+        onChange: e => setQ(e.target.value),
+        onKeyDown: (e) => {
+          if (e.key === 'Enter' && !loading && q.trim().length >= 2) {
+            e.preventDefault(); run(q);
+          }
+        },
+        autoFocus: true
       }),
-      React.createElement('div', { className: 'text-[10px] text-slate-700 text-center break-all' }, f.name)
+      React.createElement('button', {
+        className: 'btn-bronze',
+        disabled: (q.trim().length < 2) || loading,
+        onClick: () => run(q)
+      }, loading ? 'Searching…' : 'Search'),
+      React.createElement('button', {
+        className: 'btn-stone ml-auto',
+        onClick: onClose
+      }, 'Close')
+    ),
+
+    // Quick chips
+    React.createElement('div', { className: 'flex flex-wrap gap-2 mb-3' },
+      QUICK.map(term =>
+        React.createElement('button', {
+          key: term,
+          className: 'btn-stone',
+          onClick: () => { setQ(term); run(term); }
+        }, term)
+      )
+    ),
+
+    err && React.createElement('div', { className: 'text-sm text-rose-600' }, err),
+
+    // Results grid (unchanged except it applies on click)
+    React.createElement('div', { className: 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[60vh] overflow-auto' },
+      items.map(f =>
+        React.createElement('button', {
+          key: f.name,
+          className: 'rounded-lg border border-slate-200 bg-white/70 hover:shadow soft p-2 flex flex-col items-center gap-2',
+          onClick: () => { onPick?.(f.thumbUrl || f.fileUrl, f); onClose?.(); }
+        },
+          React.createElement('img', {
+            src: f.thumbUrl || f.fileUrl,
+            alt: f.name,
+            className: 'w-20 h-20 object-contain',
+            onError: (e) => { e.currentTarget.style.visibility = 'hidden'; }
+          }),
+          React.createElement('div', { className: 'text-[10px] text-slate-700 text-center break-all' }, f.name)
+        )
+      )
     )
   )
-)
-    )
-  );
+);
 }
 
     function Toolbar({ onNew, onClear, onImport, onExport, onRandom, count }) {
