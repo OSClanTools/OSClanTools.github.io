@@ -440,6 +440,44 @@
 
     const DEFAULT_ICON = 'https://cdn.jsdelivr.net/gh/tabler/tabler-icons@latest/icons/outlet.svg';
 
+// --- OSRS Wiki endpoints (no auth required)
+const WIKI_API = 'https://oldschool.runescape.wiki/api.php';
+const WIKI_FILEPATH = 'https://oldschool.runescape.wiki/Special:FilePath/';
+
+// Build a Special:FilePath URL (stable; auto-redirects to the real CDN file).
+// The `width` param usually works on MediaWiki setups for a thumb-scaled image.
+function wikiFilePathUrl(filename, width = 128) {
+  const base = WIKI_FILEPATH + encodeURIComponent(filename);
+  return width ? `${base}?width=${width}` : base;
+}
+
+// Find up to `limit` files whose names start with `prefix`.
+// Returns [{ name, fileUrl, thumbUrl }]
+async function wikiSearchFiles(prefix, limit = 50) {
+  const qs = new URLSearchParams({
+    action: 'query',
+    format: 'json',
+    origin: '*',         // required for browser CORS
+    list: 'allimages',
+    aiprefix: prefix || '',
+    ailimit: String(limit),
+  });
+  const res = await fetch(`${WIKI_API}?${qs.toString()}`);
+  const json = await res.json().catch(() => ({}));
+  const imgs = json?.query?.allimages || [];
+  return imgs.map(img => {
+    const name = img.name || img.title?.replace(/^File:/, '') || '';
+    return {
+      name,
+      // direct/original file if the API includes url; else fall back to FilePath
+      fileUrl: img.url || wikiFilePathUrl(name, 0),
+      // pick a friendly thumb size for the picker grid
+      thumbUrl: wikiFilePathUrl(name, 128),
+    };
+  });
+}
+
+
     function nanoid(size = 8) {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
       let s = '';
@@ -861,10 +899,36 @@ React.createElement('div', { className: 'flex items-center gap-2' },
       React.createElement('div', { className: 'text-sm text-emerald-700 font-medium' }, 'START tile (fixed)'),
       React.createElement('p', { className: 'text-xs text-slate-600' }, 'This tile is fixed, cannot be dragged, and cannot have a name or effect.'),
       React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-        React.createElement('div', null,
-          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'ID'),
-          React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.id, disabled: true, readOnly: true })
-        ),
+(() => {
+  const [openPicker, setOpenPicker] = React.useState(false);
+  return React.createElement(React.Fragment, null,
+    React.createElement('div', null,
+      React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Icon URL (iconFile)'),
+      React.createElement('input', {
+        className: 'w-full rounded-lg border-slate-300',
+        placeholder: 'https://… or use “Pick from OSRS Wiki”',
+        value: tile.iconFile,
+        onChange: e => update({ iconFile: e.target.value })
+      }),
+      React.createElement('div', { className: 'flex gap-2 mt-2' },
+        React.createElement('button', {
+          className: 'btn-stone',
+          onClick: () => setOpenPicker(true)
+        }, 'Pick from OSRS Wiki'),
+        React.createElement('button', {
+          className: 'btn-stone',
+          onClick: () => update({ iconFile: '' })
+        }, 'Clear')
+      )
+    ),
+    openPicker && React.createElement(IconPicker, {
+      initialQuery: (tile.name || '').replace(/\s+/g, ' ').trim(),
+      onPick: (url /* , meta */) => update({ iconFile: url }),
+      onClose: () => setOpenPicker(false)
+    })
+  );
+})(),
+
         React.createElement('div', null,
           React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
           React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.tileNumber, disabled: true, readOnly: true })
@@ -989,6 +1053,93 @@ function EffectBuilderPanel() {
     )
   );
 }
+
+function IconPicker({ initialQuery = '', onPick, onClose }) {
+  const { useState, useEffect } = React;
+  const [q, setQ] = useState(initialQuery || '');
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
+
+  const QUICK = ['Zulrah', 'Vorkath', 'Barrows', 'Slayer', 'Dragon', 'Herblore', 'Agility', 'Fishing', 'Runecraft'];
+
+  const run = async (query) => {
+    setLoading(true); setErr('');
+    try {
+      const list = await wikiSearchFiles(query.trim(), 60);
+      setItems(list);
+    } catch (e) {
+      setErr('Failed to fetch from OSRS Wiki. Try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { if (q) run(q); }, []); // pre-run if initialQuery exists
+
+  return React.createElement('div', {
+    className: 'fixed inset-0 z-50 grid place-items-center bg-black/50 p-4'
+  },
+    React.createElement('div', { className: 'w-full max-w-3xl panel-medieval p-4 relative' },
+      // Close button
+      React.createElement('button', {
+        className: 'absolute right-3 top-3 btn-stone',
+        onClick: onClose
+      }, 'Close'),
+
+      React.createElement('div', { className: 'mb-3 flex items-center gap-2' },
+        React.createElement('input', {
+          className: 'w-full rounded-lg border-slate-300',
+          placeholder: 'Search file name prefix (e.g., "Zulrah", "Dragon", "Herblore")',
+          value: q,
+          onChange: e => setQ(e.target.value)
+        }),
+        React.createElement('button', { className: 'btn-bronze', onClick: () => run(q) }, 'Search')
+      ),
+
+      React.createElement('div', { className: 'flex flex-wrap gap-2 mb-3' },
+        QUICK.map(term =>
+          React.createElement('button', {
+            key: term,
+            className: 'btn-stone',
+            onClick: () => { setQ(term); run(term); }
+          }, term)
+        )
+      ),
+
+      loading && React.createElement('div', { className: 'text-sm text-slate-600' }, 'Loading…'),
+      err && React.createElement('div', { className: 'text-sm text-rose-600' }, err),
+
+      React.createElement('div', {
+        className: 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[60vh] overflow-auto'
+      },
+        items.map(f =>
+          React.createElement('button', {
+            key: f.name,
+            className: 'rounded-lg border border-slate-200 bg-white/70 hover:shadow soft p-2 flex flex-col items-center gap-2',
+            onClick: () => {
+              // Use a slightly larger width in tiles so it’s crisp
+              const picked = wikiFilePathUrl(f.name, 192);
+              onPick?.(picked, f);
+              onClose?.();
+            }
+          },
+            React.createElement('img', {
+              src: f.thumbUrl,
+              alt: f.name,
+              className: 'w-20 h-20 object-contain',
+              onError: (e) => { e.currentTarget.style.visibility = 'hidden'; }
+            }),
+            React.createElement('div', {
+              className: 'text-[10px] text-slate-700 text-center break-all'
+            }, f.name)
+          )
+        )
+      )
+    )
+  );
+}
+
 
 
     function Toolbar({ onNew, onClear, onImport, onExport, onRandom, count }) {
