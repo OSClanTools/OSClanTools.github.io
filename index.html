@@ -614,6 +614,12 @@ function effectTargetCount(playableCount) {
   return Math.max(1, Math.round(playableCount * pct));
 }
 
+function randomInt(min, max) {
+  const lo = Math.ceil(Math.min(min, max));
+  const hi = Math.floor(Math.max(min, max));
+  return Math.floor(Math.random() * (hi - lo + 1)) + lo;
+}
+
 function buildRandomEffect(kind, playableCount) {
   const def = EFFECTS.find(e => e.kind === kind);
   const trigger = def?.defaultTrigger || 'on_next_roll';
@@ -623,7 +629,7 @@ function buildRandomEffect(kind, playableCount) {
     case 'move_back':
       return { kind, trigger, amount: randomInt(1, Math.max(1, Math.floor(playableCount * 0.08))) };
     case 'teleport_to':
-      return { kind, trigger, index: randomInt(1, Math.max(1, playableCount)) }; // 1..N
+  return { kind, trigger, index: Math.max(1, Math.min(playableCount, randomInt(1, playableCount))) };
     case 'double_next_roll':
     case 'reverse_next_roll':
     case 'shield_next_negative':
