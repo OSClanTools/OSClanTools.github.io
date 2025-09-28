@@ -162,23 +162,26 @@
       }
     }
 
-.tt-board-wrap {
-  position: relative;
-  overflow: auto;           /* keep vertical scroll if tall */
-  overflow-x: hidden;       /* prevent horizontal scroll */
-  padding: 8px;
-  background: rgba(255, 255, 255, 0.35);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  border-radius: 14px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-  backdrop-filter: blur(2px);
+    .tt-board-wrap {
+      position: relative;
+      overflow: auto;
+      /* keep vertical scroll if tall */
+      overflow-x: hidden;
+      /* prevent horizontal scroll */
+      padding: 8px;
+      background: rgba(255, 255, 255, 0.35);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 14px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(2px);
 
-  /* cap to 15 rows (15 tiles + 14 gaps + padding) */
-  max-height: calc((var(--tile) * 15) + (12px * 14) + 24px);
+      /* cap to 15 rows (15 tiles + 14 gaps + padding) */
+      max-height: calc((var(--tile) * 15) + (12px * 14) + 24px);
 
-  display: flex;            /* ⟵ center the grid */
-  justify-content: center;
-}
+      display: flex;
+      /* ⟵ center the grid */
+      justify-content: center;
+    }
 
     /* Keep the visual wrapper the same size as the tile while we fix offset */
     .tt-card {
@@ -195,18 +198,19 @@
       margin-left: auto;
     }
 
-.tt-grid {
-  display: grid;
-  grid-auto-rows: var(--tile);
-  grid-auto-flow: row dense;
-  align-content: start;
-  justify-content: start;   /* grid content starts at col 1 */
-  gap: 12px;
+    .tt-grid {
+      display: grid;
+      grid-auto-rows: var(--tile);
+      grid-auto-flow: row dense;
+      align-content: start;
+      justify-content: start;
+      /* grid content starts at col 1 */
+      gap: 12px;
 
-  /* Center + scale to fit (hook below sets transform) */
-  margin-inline: auto;
-  transform-origin: top center;
-}
+      /* Center + scale to fit (hook below sets transform) */
+      margin-inline: auto;
+      transform-origin: top center;
+    }
 
     /* Start/Finish marker badges */
     .tt-marker {
@@ -316,97 +320,114 @@
       border-radius: 9999px;
       background: #0ea5e9;
     }
+
     .tt-eff {
-  position: absolute;
-  left: 6px;
-  bottom: 6px;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: rgba(0,0,0,0.55);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.35);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-.tt-eff img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-}
+      position: absolute;
+      left: 6px;
+      bottom: 6px;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.55);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
 
-/* Fallback 2-letter badge if icon missing */
-.tt-eff-fallback {
-  font-family: 'RuneScape-Quill', Inter, ui-sans-serif;
-  color: #ffd166;
-  font-size: 11px;
-  text-shadow: 0 1px 0 rgba(0,0,0,.85);
-}
+    .tt-eff img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
 
-/* Token with icon */
-.tt-token img {
-  width: 16px;
-  height: 16px;
-  object-fit: contain;
-  display: block;
-  border-radius: 4px;
-}
-.panel-medieval {
-  position: relative;
-  background: url('assets/images/parchment.png') center/cover no-repeat, rgba(250, 245, 230, 0.86);
-  border: 3px solid #cd7f32;          /* bronze */
-  border-radius: 12px;
-  box-shadow: 0 6px 20px rgba(0,0,0,.12), inset 0 0 0 1.5px #8a531e;
-  overflow: hidden;
-}
-.panel-medieval::before {
-  content: "";
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse at top, rgba(255,255,255,.25), transparent 60%),
-              radial-gradient(ellipse at bottom, rgba(0,0,0,.08), transparent 60%);
-  pointer-events: none;
-}
+    /* Fallback 2-letter badge if icon missing */
+    .tt-eff-fallback {
+      font-family: 'RuneScape-Quill', Inter, ui-sans-serif;
+      color: #ffd166;
+      font-size: 11px;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, .85);
+    }
 
-/* Section heading in RuneScape-Quill */
-.heading-medieval {
-  font-family: 'RuneScape-Quill', Inter, ui-sans-serif;
-  letter-spacing: .3px;
-  color: #2c1a0e;
-  text-shadow: 0 1px 0 rgba(0,0,0,.35);
-}
+    /* Token with icon */
+    .tt-token img {
+      width: 16px;
+      height: 16px;
+      object-fit: contain;
+      display: block;
+      border-radius: 4px;
+    }
 
-/* Bronze button */
-.btn-bronze {
-  background: linear-gradient(180deg, #d8a25e, #b0792e);
-  color: #1b1108;
-  border: 1px solid #8a531e;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0,0,0,.2), inset 0 0 0 1px rgba(255,255,255,.25);
-  transition: transform .06s ease, box-shadow .12s ease;
-}
-.btn-bronze:hover { transform: translateY(-1px); }
-.btn-bronze:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+    .panel-medieval {
+      position: relative;
+      background: url('assets/images/parchment.png') center/cover no-repeat, rgba(250, 245, 230, 0.86);
+      border: 3px solid #cd7f32;
+      /* bronze */
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .12), inset 0 0 0 1.5px #8a531e;
+      overflow: hidden;
+    }
 
-/* Secondary "stone" button */
-.btn-stone {
-  background: linear-gradient(180deg, #e5e7eb, #cbd5e1);
-  color: #111827;
-  border: 1px solid #9ca3af;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0,0,0,.1), inset 0 0 0 1px rgba(255,255,255,.25);
-  transition: transform .06s ease, box-shadow .12s ease;
-}
-.btn-stone:hover { transform: translateY(-1px); }
+    .panel-medieval::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top, rgba(255, 255, 255, .25), transparent 60%),
+        radial-gradient(ellipse at bottom, rgba(0, 0, 0, .08), transparent 60%);
+      pointer-events: none;
+    }
 
-.editor-prose, .editor-prose * {
-  color: #000 !important;
-  text-shadow: 1px 0px 1px rgba(255,255,255,0.4);
-}
+    /* Section heading in RuneScape-Quill */
+    .heading-medieval {
+      font-family: 'RuneScape-Quill', Inter, ui-sans-serif;
+      letter-spacing: .3px;
+      color: #2c1a0e;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, .35);
+    }
+
+    /* Bronze button */
+    .btn-bronze {
+      background: linear-gradient(180deg, #d8a25e, #b0792e);
+      color: #1b1108;
+      border: 1px solid #8a531e;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, .2), inset 0 0 0 1px rgba(255, 255, 255, .25);
+      transition: transform .06s ease, box-shadow .12s ease;
+    }
+
+    .btn-bronze:hover {
+      transform: translateY(-1px);
+    }
+
+    .btn-bronze:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+    }
+
+    /* Secondary "stone" button */
+    .btn-stone {
+      background: linear-gradient(180deg, #e5e7eb, #cbd5e1);
+      color: #111827;
+      border: 1px solid #9ca3af;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, .1), inset 0 0 0 1px rgba(255, 255, 255, .25);
+      transition: transform .06s ease, box-shadow .12s ease;
+    }
+
+    .btn-stone:hover {
+      transform: translateY(-1px);
+    }
+
+    .editor-prose,
+    .editor-prose * {
+      color: #000 !important;
+      text-shadow: 1px 0px 1px rgba(255, 255, 255, 0.4);
+    }
   </style>
 </head>
 
@@ -440,42 +461,42 @@
 
     const DEFAULT_ICON = 'https://cdn.jsdelivr.net/gh/tabler/tabler-icons@latest/icons/outlet.svg';
 
-// --- OSRS Wiki endpoints (no auth required)
-const WIKI_API = 'https://oldschool.runescape.wiki/api.php';
-const WIKI_FILEPATH = 'https://oldschool.runescape.wiki/Special:FilePath/';
+    // --- OSRS Wiki endpoints (no auth required)
+    const WIKI_API = 'https://oldschool.runescape.wiki/api.php';
+    const WIKI_FILEPATH = 'https://oldschool.runescape.wiki/Special:FilePath/';
 
-// Build a Special:FilePath URL (stable; auto-redirects to the real CDN file).
-// The `width` param usually works on MediaWiki setups for a thumb-scaled image.
-function wikiFilePathUrl(filename, width = 128) {
-  const base = WIKI_FILEPATH + encodeURIComponent(filename);
-  return width ? `${base}?width=${width}` : base;
-}
+    // Build a Special:FilePath URL (stable; auto-redirects to the real CDN file).
+    // The `width` param usually works on MediaWiki setups for a thumb-scaled image.
+    function wikiFilePathUrl(filename, width = 128) {
+      const base = WIKI_FILEPATH + encodeURIComponent(filename);
+      return width ? `${base}?width=${width}` : base;
+    }
 
-// Find up to `limit` files whose names start with `prefix`.
-// Returns [{ name, fileUrl, thumbUrl }]
-async function wikiSearchFiles(prefix, limit = 50) {
-  const qs = new URLSearchParams({
-    action: 'query',
-    format: 'json',
-    origin: '*',         // required for browser CORS
-    list: 'allimages',
-    aiprefix: prefix || '',
-    ailimit: String(limit),
-  });
-  const res = await fetch(`${WIKI_API}?${qs.toString()}`);
-  const json = await res.json().catch(() => ({}));
-  const imgs = json?.query?.allimages || [];
-  return imgs.map(img => {
-    const name = img.name || img.title?.replace(/^File:/, '') || '';
-    return {
-      name,
-      // direct/original file if the API includes url; else fall back to FilePath
-      fileUrl: img.url || wikiFilePathUrl(name, 0),
-      // pick a friendly thumb size for the picker grid
-      thumbUrl: wikiFilePathUrl(name, 128),
-    };
-  });
-}
+    // Find up to `limit` files whose names start with `prefix`.
+    // Returns [{ name, fileUrl, thumbUrl }]
+    async function wikiSearchFiles(prefix, limit = 50) {
+      const qs = new URLSearchParams({
+        action: 'query',
+        format: 'json',
+        origin: '*',         // required for browser CORS
+        list: 'allimages',
+        aiprefix: prefix || '',
+        ailimit: String(limit),
+      });
+      const res = await fetch(`${WIKI_API}?${qs.toString()}`);
+      const json = await res.json().catch(() => ({}));
+      const imgs = json?.query?.allimages || [];
+      return imgs.map(img => {
+        const name = img.name || img.title?.replace(/^File:/, '') || '';
+        return {
+          name,
+          // direct/original file if the API includes url; else fall back to FilePath
+          fileUrl: img.url || wikiFilePathUrl(name, 0),
+          // pick a friendly thumb size for the picker grid
+          thumbUrl: wikiFilePathUrl(name, 128),
+        };
+      });
+    }
 
 
     function nanoid(size = 8) {
@@ -486,28 +507,28 @@ async function wikiSearchFiles(prefix, limit = 50) {
     }
 
     function useFitScale(gridRef, cols = 15) {
-  React.useEffect(() => {
-    if (!gridRef.current) return;
-    const el = gridRef.current;
-    const parent = el.parentElement;
+      React.useEffect(() => {
+        if (!gridRef.current) return;
+        const el = gridRef.current;
+        const parent = el.parentElement;
 
-    const compute = () => {
-      const root = getComputedStyle(document.documentElement);
-      const tile = parseFloat(root.getPropertyValue('--tile')) || 84;
-      const gap = 12; // must match .tt-grid gap
-      const full = cols * tile + (cols - 1) * gap;    // full pixel width of 15 columns
-      const avail = parent.clientWidth - 8 * 2;       // 8px padding on each side
-      const scale = Math.max(0.5, Math.min(1, avail / full)); // clamp 0.5..1 for readability
-      el.style.transform = `scale(${scale})`;
-      el.setAttribute('data-scale', String(scale));
-    };
+        const compute = () => {
+          const root = getComputedStyle(document.documentElement);
+          const tile = parseFloat(root.getPropertyValue('--tile')) || 84;
+          const gap = 12; // must match .tt-grid gap
+          const full = cols * tile + (cols - 1) * gap;    // full pixel width of 15 columns
+          const avail = parent.clientWidth - 8 * 2;       // 8px padding on each side
+          const scale = Math.max(0.5, Math.min(1, avail / full)); // clamp 0.5..1 for readability
+          el.style.transform = `scale(${scale})`;
+          el.setAttribute('data-scale', String(scale));
+        };
 
-    const ro = new ResizeObserver(compute);
-    ro.observe(parent);
-    compute();
-    return () => ro.disconnect();
-  }, [gridRef, cols]);
-}
+        const ro = new ResizeObserver(compute);
+        ro.observe(parent);
+        compute();
+        return () => ro.disconnect();
+      }, [gridRef, cols]);
+    }
 
     function useAutoCols(maxCols = 15) {
       const gridRef = React.useRef(null);
@@ -543,9 +564,9 @@ async function wikiSearchFiles(prefix, limit = 50) {
     }
 
     function getEffectIconUrl(kind) {
-  if (!kind || kind === 'none') return null;
-  return `assets/images/sstatuseffects/${kind}.png`;
-}
+      if (!kind || kind === 'none') return null;
+      return `assets/images/sstatuseffects/${kind}.png`;
+    }
 
     function makeDefaultTile(n) {
       return {
@@ -581,233 +602,239 @@ async function wikiSearchFiles(prefix, limit = 50) {
       return [];
     }
 
-function normalizeImportedTiles(list) {
-  const tiles = [];
-  for (let i = 0; i < list.length; i++) {
-    const t = list[i] || {};
-    const num = coerceNumber(t.tileNumber ?? t.id ?? i + 1, i + 1);
-    const id = String(t.id ?? num);
+    function normalizeImportedTiles(list) {
+      const tiles = [];
+      for (let i = 0; i < list.length; i++) {
+        const t = list[i] || {};
+        const num = coerceNumber(t.tileNumber ?? t.id ?? i + 1, i + 1);
+        const id = String(t.id ?? num);
 
-    // Accept multiple icon field names
-    const icon =
-      t.iconFile ?? t.iconUrl ?? t.iconURL ?? t.icon ?? t.icon_link ?? t.iconLink ?? '';
+        // Accept multiple icon field names
+        const icon =
+          t.iconFile ?? t.iconUrl ?? t.iconURL ?? t.icon ?? t.icon_link ?? t.iconLink ?? '';
 
-    // Treat missing OR empty OR 'none' effect as none
-    const rawEff = t.effect;
-    const hasEff =
-      rawEff &&
-      typeof rawEff === 'object' &&
-      typeof rawEff.kind === 'string' &&
-      rawEff.kind !== 'none' &&
-      rawEff.kind.trim() !== '';
+        // Treat missing OR empty OR 'none' effect as none
+        const rawEff = t.effect;
+        const hasEff =
+          rawEff &&
+          typeof rawEff === 'object' &&
+          typeof rawEff.kind === 'string' &&
+          rawEff.kind !== 'none' &&
+          rawEff.kind.trim() !== '';
 
-    let effect, meta;
-    if (!hasEff) {
-      effect = { kind: 'none' };
-      meta   = { presetId: 'none', opts: {}, attached: false };
-    } else {
-      const kind = String(rawEff.kind).trim();
-      const def  = EFFECTS.find(e => e.kind === kind);
-      const trigger = rawEff.trigger || def?.defaultTrigger || 'on_next_roll';
+        let effect, meta;
+        if (!hasEff) {
+          effect = { kind: 'none' };
+          meta = { presetId: 'none', opts: {}, attached: false };
+        } else {
+          const kind = String(rawEff.kind).trim();
+          const def = EFFECTS.find(e => e.kind === kind);
+          const trigger = rawEff.trigger || def?.defaultTrigger || 'on_next_roll';
 
-      const obj = { kind, trigger };
-      if ('amount' in rawEff) obj.amount = coerceNumber(rawEff.amount, 1);
-      if ('index'  in rawEff) obj.index  = coerceNumber(rawEff.index,  1);
+          const obj = { kind, trigger };
+          if ('amount' in rawEff) obj.amount = coerceNumber(rawEff.amount, 1);
+          if ('index' in rawEff) obj.index = coerceNumber(rawEff.index, 1);
 
-      const opts = {};
-      if ('amount' in obj) opts.amount = obj.amount;
-      if ('index'  in obj) opts.index  = obj.index;
+          const opts = {};
+          if ('amount' in obj) opts.amount = obj.amount;
+          if ('index' in obj) opts.index = obj.index;
 
-      effect = obj;
-      meta   = { presetId: kind, opts, attached: true };
+          effect = obj;
+          meta = { presetId: kind, opts, attached: true };
+        }
+
+        tiles.push({
+          id,
+          tileNumber: num,
+          name: String(t.name ?? `Tile ${num}`),
+          desc: String(t.desc ?? ''),
+          iconFile: String(icon),
+          effect,
+          meta,
+        });
+      }
+
+      // Sort and resequence IDs/indices 1..N
+      tiles.sort((a, b) => a.tileNumber - b.tileNumber);
+      tiles.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
+      return tiles;
     }
 
-    tiles.push({
-      id,
-      tileNumber: num,
-      name: String(t.name ?? `Tile ${num}`),
-      desc: String(t.desc ?? ''),
-      iconFile: String(icon),
-      effect,
-      meta,
-    });
-  }
+    // Scale the percent of effected tiles by board size
+    // <20 tiles → ~5–12% ; 20–60 → ~12–22% ; >60 → ~22–30%
+    function effectTargetCount(playableCount) {
+      if (playableCount <= 0) return 0;
+      const pct =
+        playableCount < 20
+          ? 0.05 + Math.random() * 0.07
+          : playableCount < 60
+            ? 0.12 + Math.random() * 0.10
+            : 0.22 + Math.random() * 0.08;
+      return Math.max(1, Math.round(playableCount * pct));
+    }
 
-  // Sort and resequence IDs/indices 1..N
-  tiles.sort((a, b) => a.tileNumber - b.tileNumber);
-  tiles.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
-  return tiles;
-}
+    function randomInt(min, max) {
+      const lo = Math.ceil(Math.min(min, max));
+      const hi = Math.floor(Math.max(min, max));
+      return Math.floor(Math.random() * (hi - lo + 1)) + lo;
+    }
 
-// Scale the percent of effected tiles by board size
-// <20 tiles → ~5–12% ; 20–60 → ~12–22% ; >60 → ~22–30%
-function effectTargetCount(playableCount) {
-  if (playableCount <= 0) return 0;
-  const pct =
-    playableCount < 20
-      ? 0.05 + Math.random() * 0.07
-      : playableCount < 60
-      ? 0.12 + Math.random() * 0.10
-      : 0.22 + Math.random() * 0.08;
-  return Math.max(1, Math.round(playableCount * pct));
-}
+    function buildRandomEffect(kind, playableCount) {
+      const def = EFFECTS.find(e => e.kind === kind);
+      const trigger = def?.defaultTrigger || 'on_next_roll';
+      switch (kind) {
+        case 'move_forward':
+          return { kind, trigger, amount: randomInt(1, Math.max(2, Math.floor(playableCount * 0.10))) };
+        case 'move_back':
+          return { kind, trigger, amount: randomInt(1, Math.max(1, Math.floor(playableCount * 0.08))) };
+        case 'teleport_to':
+          return { kind, trigger, index: Math.max(1, Math.min(playableCount, randomInt(1, playableCount))) };
+        case 'double_next_roll':
+        case 'reverse_next_roll':
+        case 'shield_next_negative':
+          return { kind, trigger, amount: 1 };
+        case 'set_checkpoint':
+        case 'go_to_checkpoint':
+        case 'go_to_start':
+        case 'swap_with_random_team':
+        case 'swap_with_leader':
+          return { kind, trigger };
+        default:
+          return { kind: 'none' };
+      }
+    }
 
-function randomInt(min, max) {
-  const lo = Math.ceil(Math.min(min, max));
-  const hi = Math.floor(Math.max(min, max));
-  return Math.floor(Math.random() * (hi - lo + 1)) + lo;
-}
+    function useSortable(containerRef, items, setItems) {
+      const { useEffect } = React;
 
-function buildRandomEffect(kind, playableCount) {
-  const def = EFFECTS.find(e => e.kind === kind);
-  const trigger = def?.defaultTrigger || 'on_next_roll';
-  switch (kind) {
-    case 'move_forward':
-      return { kind, trigger, amount: randomInt(1, Math.max(2, Math.floor(playableCount * 0.10))) };
-    case 'move_back':
-      return { kind, trigger, amount: randomInt(1, Math.max(1, Math.floor(playableCount * 0.08))) };
-    case 'teleport_to':
-  return { kind, trigger, index: Math.max(1, Math.min(playableCount, randomInt(1, playableCount))) };
-    case 'double_next_roll':
-    case 'reverse_next_roll':
-    case 'shield_next_negative':
-      return { kind, trigger, amount: 1 };
-    case 'set_checkpoint':
-    case 'go_to_checkpoint':
-    case 'go_to_start':
-    case 'swap_with_random_team':
-    case 'swap_with_leader':
-      return { kind, trigger };
-    default:
-      return { kind: 'none' };
-  }
-}
+      useEffect(() => {
+        if (!containerRef.current) return;
 
-function useSortable(containerRef, items, setItems) {
-  const { useEffect } = React;
+        const el = containerRef.current;
+        const sortable = new Sortable(el, {
+          dataIdAttr: 'data-id',
+          draggable: '.tt-cell:not(.tt-fixed)',  // ignore fixed first tile
+          handle: '.tt-tile',
+          animation: 90,
+          easing: 'cubic-bezier(.2,.7,.2,1)',
+          forceFallback: true,
+          fallbackOnBody: true,
+          fallbackTolerance: 2,
+          delayOnTouchOnly: true,
+          touchStartThreshold: 3,
+          swapThreshold: 0.28,
+          invertSwap: true,
+          invertSwapThreshold: 0.85,
+          ghostClass: 'tt-ghost',
+          chosenClass: 'tt-chosen',
+          dragClass: 'tt-drag',
+          scroll: true,
+          scrollSensitivity: 48,
+          scrollSpeed: 12,
+          bubbleScroll: true,
 
-  useEffect(() => {
-    if (!containerRef.current) return;
+          onEnd: () => {
+            // 1) Read actual DOM order of ALL cells (fixed + draggables)
+            const nodes = Array.from(el.querySelectorAll('.tt-cell'));
+            const idsInDom = nodes
+              .map(n => n.getAttribute('data-id'))
+              .filter(Boolean);
 
-    const el = containerRef.current;
-    const sortable = new Sortable(el, {
-      dataIdAttr: 'data-id',
-      draggable: '.tt-cell:not(.tt-fixed)',  // ignore fixed first tile
-      handle: '.tt-tile',
-      animation: 90,
-      easing: 'cubic-bezier(.2,.7,.2,1)',
-      forceFallback: true,
-      fallbackOnBody: true,
-      fallbackTolerance: 2,
-      delayOnTouchOnly: true,
-      touchStartThreshold: 3,
-      swapThreshold: 0.28,
-      invertSwap: true,
-      invertSwapThreshold: 0.85,
-      ghostClass: 'tt-ghost',
-      chosenClass: 'tt-chosen',
-      dragClass: 'tt-drag',
-      scroll: true,
-      scrollSensitivity: 48,
-      scrollSpeed: 12,
-      bubbleScroll: true,
+            // 2) Ensure the fixed first tile stays first
+            const fixedId = String(items[0]?.id);
+            const unique = Array.from(new Set(idsInDom));          // de-dupe just in case
+            const withoutFixed = unique.filter(id => id !== fixedId);
+            const finalIds = [fixedId, ...withoutFixed];
 
-      onEnd: () => {
-        // 1) Read actual DOM order of ALL cells (fixed + draggables)
-        const nodes = Array.from(el.querySelectorAll('.tt-cell'));
-        const idsInDom = nodes
-          .map(n => n.getAttribute('data-id'))
-          .filter(Boolean);
+            // 3) Rebuild array from ids (fallback to old items if something is missing)
+            const byId = new Map(items.map(t => [String(t.id), t]));
+            const newArr = finalIds
+              .map(id => byId.get(String(id)))
+              .filter(Boolean);
 
-        // 2) Ensure the fixed first tile stays first
-        const fixedId = String(items[0]?.id);
-        const unique = Array.from(new Set(idsInDom));          // de-dupe just in case
-        const withoutFixed = unique.filter(id => id !== fixedId);
-        const finalIds = [fixedId, ...withoutFixed];
+            // If for any reason lengths mismatch, bail out safely
+            if (!newArr.length || newArr.length !== items.length) {
+              console.warn('Sortable reorder mismatch; preserving previous order');
+              return;
+            }
 
-        // 3) Rebuild array from ids (fallback to old items if something is missing)
-        const byId = new Map(items.map(t => [String(t.id), t]));
-        const newArr = finalIds
-          .map(id => byId.get(String(id)))
-          .filter(Boolean);
+            // 4) Resequence 1..N
+            newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
 
-        // If for any reason lengths mismatch, bail out safely
-        if (!newArr.length || newArr.length !== items.length) {
-          console.warn('Sortable reorder mismatch; preserving previous order');
-          return;
-        }
+            setItems(newArr);
+          },
+        });
 
-        // 4) Resequence 1..N
-        newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
+        return () => sortable.destroy();
+      }, [containerRef, items, setItems]);
+    }
+    function TileCard({ tile, onSelect, selected, marker, onDropEffect }) {
+      const kind = tile.effect?.kind || 'none';
+      const iconUrl = getEffectIconUrl(kind);
+      const hasIcon = Boolean(tile.iconFile);
+      const isStart = String(tile.id) === '1';
 
-        setItems(newArr);
-      },
-    });
+      const canDrop = !isStart; // ← guard
 
-    return () => sortable.destroy();
-  }, [containerRef, items, setItems]);
-}
-function TileCard({ tile, onSelect, selected, marker, onDropEffect }) {
-  const kind = tile.effect?.kind || 'none';
-  const iconUrl = getEffectIconUrl(kind);
-  const hasIcon = Boolean(tile.iconFile);
-  const isStart = String(tile.id) === '1';
+      return (
+        React.createElement('div', { className: selected ? 'rounded-xl ring-2 ring-indigo-400' : '' },
+          React.createElement('div', {
+            className: 'tt-tile drag-handle',
+            onClick: onSelect,
+            tabIndex: 0,
 
-  // 2-letter fallback (e.g., 'move_forward' -> 'MF')
-  const short = (kind || '').split('_').map(s => s[0] || '').join('').slice(0,2).toUpperCase();
+            onDragOver: (e) => {
+              if (!canDrop) return;                       // ← guard
+              if (e.dataTransfer.types.includes('text/tt-effect') || e.dataTransfer.types.includes('application/json')) {
+                e.preventDefault();
+                e.currentTarget.parentElement.classList.add('tt-drop-target');
+              }
+            },
+            onDragLeave: (e) => {
+              if (!canDrop) return;                       // ← guard
+              e.currentTarget.parentElement.classList.remove('tt-drop-target');
+            },
+            onDrop: (e) => {
+              if (!canDrop) return;                       // ← guard
+              e.preventDefault();
+              e.currentTarget.parentElement.classList.remove('tt-drop-target');
+              let json = e.dataTransfer.getData('text/tt-effect') || e.dataTransfer.getData('application/json');
+              if (!json) return;
+              try {
+                const eff = JSON.parse(json);
+                if (!eff || typeof eff !== 'object') return;
+                if (typeof onDropEffect === 'function') onDropEffect(eff);
+              } catch { }
+            }
+          },
+            (marker && React.createElement('div', { className: `tt-marker ${marker === 'FINISH' ? 'finish' : ''}` }, marker)),
+            React.createElement('div', { className: 'tt-tile-num' }, isStart ? '' : `#${tile.tileNumber}`),
 
-  return (
-    React.createElement('div', { className: selected ? 'rounded-xl ring-2 ring-indigo-400' : '' },
-      React.createElement('div', {
-        className: 'tt-tile drag-handle',
-        onClick: onSelect,
-        tabIndex: 0,
-        onDragOver: (e) => {
-          if (e.dataTransfer.types.includes('text/tt-effect') || e.dataTransfer.types.includes('application/json')) {
-            e.preventDefault();
-            e.currentTarget.parentElement.classList.add('tt-drop-target');
-          }
-        },
-        onDragLeave: (e) => {
-          e.currentTarget.parentElement.classList.remove('tt-drop-target');
-        },
-        onDrop: (e) => {
-          e.preventDefault();
-          e.currentTarget.parentElement.classList.remove('tt-drop-target');
-          let json = e.dataTransfer.getData('text/tt-effect') || e.dataTransfer.getData('application/json');
-          if (!json) return;
-          try {
-            const eff = JSON.parse(json);
-            if (!eff || typeof eff !== 'object') return;
-            if (typeof onDropEffect === 'function') onDropEffect(eff);
-          } catch {}
-        }
-      },
-        (marker && React.createElement('div', { className: `tt-marker ${marker === 'FINISH' ? 'finish' : ''}` }, marker)),
-        React.createElement('div', { className: 'tt-tile-num' }, isStart ? '' : `#${tile.tileNumber}`),
-        !isStart && hasIcon
-          ? React.createElement('img', {
-              src: tile.iconFile,
-              className: 'tt-tile-icon',
-              draggable: false,
-              onError: (e) => { e.currentTarget.style.display = 'none'; }
-            })
-          : !isStart && React.createElement('div', { className: 'tt-tile-name' }, (tile.name || 'Untitled')),
-
-        // Effect icon overlay (only when not START and effect != none)
-        (!isStart && kind !== 'none') && React.createElement('div', { className: 'tt-eff', title: kind },
-          iconUrl
-            ? React.createElement('img', {
-                src: iconUrl,
-                alt: kind,
-                onError: (e) => { e.currentTarget.replaceWith(Object.assign(document.createElement('div'), { className: 'tt-eff-fallback', innerText: short })); }
+            // Icon or name: NEVER show on START
+            !isStart && hasIcon
+              ? React.createElement('img', {
+                src: tile.iconFile,
+                className: 'tt-tile-icon',
+                draggable: false,
+                onError: (e) => { e.currentTarget.style.display = 'none'; }
               })
-            : React.createElement('div', { className: 'tt-eff-fallback' }, short)
+              : !isStart && React.createElement('div', { className: 'tt-tile-name' }, (tile.name || 'Untitled')),
+
+            // Effect badge overlay: NEVER on START
+            (!isStart && kind !== 'none') && React.createElement('div', { className: 'tt-eff', title: kind },
+              iconUrl
+                ? React.createElement('img', {
+                  src: iconUrl,
+                  alt: kind,
+                  onError: (e) => { e.currentTarget.replaceWith(Object.assign(document.createElement('div'), { className: 'tt-eff-fallback', innerText: (kind || '').split('_').map(s => s[0]).join('').slice(0, 2).toUpperCase() })); }
+                })
+                : React.createElement('div', { className: 'tt-eff-fallback' }, (kind || '').split('_').map(s => s[0]).join('').slice(0, 2).toUpperCase())
+            )
+          )
         )
-      )
-    )
-  );
-}
+      );
+    }
+
 
 
     function EffectEditor({ tile, onChange }) {
@@ -852,16 +879,16 @@ function TileCard({ tile, onSelect, selected, marker, onDropEffect }) {
               }, EFFECTS.map(x => React.createElement('option', { key: x.kind, value: x.kind }, x.label)))
             ),
             (eff.kind !== 'none') &&
-React.createElement('div', { className: 'flex items-center gap-2' },
-  React.createElement('div', { className: 'tt-eff' },
-    React.createElement('img', {
-      src: getEffectIconUrl(eff.kind),
-      alt: eff.kind,
-      onError: (e)=>{ e.currentTarget.replaceWith(Object.assign(document.createElement('div'), { className: 'tt-eff-fallback', innerText: (eff.kind||'').split('_').map(s=>s[0]).join('').toUpperCase().slice(0,2) })); }
-    })
-  ),
-  React.createElement('div', { className: 'text-xs text-slate-600' }, `Effect: ${eff.kind}${eff.amount!=null?` | amount=${eff.amount}`:''}${eff.index!=null?` | index=${eff.index}`:''}`)
-),
+            React.createElement('div', { className: 'flex items-center gap-2' },
+              React.createElement('div', { className: 'tt-eff' },
+                React.createElement('img', {
+                  src: getEffectIconUrl(eff.kind),
+                  alt: eff.kind,
+                  onError: (e) => { e.currentTarget.replaceWith(Object.assign(document.createElement('div'), { className: 'tt-eff-fallback', innerText: (eff.kind || '').split('_').map(s => s[0]).join('').toUpperCase().slice(0, 2) })); }
+                })
+              ),
+              React.createElement('div', { className: 'text-xs text-slate-600' }, `Effect: ${eff.kind}${eff.amount != null ? ` | amount=${eff.amount}` : ''}${eff.index != null ? ` | index=${eff.index}` : ''}`)
+            ),
             (eff.kind !== 'none') && React.createElement('div', null,
               React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Trigger'),
               React.createElement('select', {
@@ -892,50 +919,53 @@ React.createElement('div', { className: 'flex items-center gap-2' },
 
     function EditorPanel({ tile, setTile, onDuplicate, onDelete }) {
       if (!tile) return React.createElement('div', { className: 'text-slate-500' }, 'Select a tile to edit.');
-  const isStart = String(tile.id) === '1';
+      const isStart = String(tile.id) === '1';
 
-  if (isStart) {
-    return React.createElement('div', { className: 'space-y-3' },
-      React.createElement('div', { className: 'text-sm text-emerald-700 font-medium' }, 'START tile (fixed)'),
-      React.createElement('p', { className: 'text-xs text-slate-600' }, 'This tile is fixed, cannot be dragged, and cannot have a name or effect.'),
-      React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-(() => {
-  const [openPicker, setOpenPicker] = React.useState(false);
-  return React.createElement(React.Fragment, null,
-    React.createElement('div', null,
-      React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Icon URL (iconFile)'),
-      React.createElement('input', {
-        className: 'w-full rounded-lg border-slate-300',
-        placeholder: 'https://… or use “Pick from OSRS Wiki”',
-        value: tile.iconFile,
-        onChange: e => update({ iconFile: e.target.value })
-      }),
-      React.createElement('div', { className: 'flex gap-2 mt-2' },
-        React.createElement('button', {
-          className: 'btn-stone',
-          onClick: () => setOpenPicker(true)
-        }, 'Pick from OSRS Wiki'),
-        React.createElement('button', {
-          className: 'btn-stone',
-          onClick: () => update({ iconFile: '' })
-        }, 'Clear')
-      )
-    ),
-    openPicker && React.createElement(IconPicker, {
-      initialQuery: (tile.name || '').replace(/\s+/g, ' ').trim(),
-      onPick: (url /* , meta */) => update({ iconFile: url }),
-      onClose: () => setOpenPicker(false)
-    })
-  );
-})(),
+      if (isStart) {
+        return React.createElement('div', { className: 'space-y-3' },
+          React.createElement('div', { className: 'text-sm text-emerald-700 font-medium' }, 'START tile (fixed)'),
+          React.createElement('p', { className: 'text-xs text-slate-600' }, 'This tile is fixed, cannot be dragged, and cannot have a name or effect.'),
+          React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+            (() => {
+              const [openPicker, setOpenPicker] = React.useState(false);
+              return React.createElement(React.Fragment, null,
+                React.createElement('div', null,
+                  React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Icon URL (iconFile)'),
+                  React.createElement('input', {
+                    className: 'w-full rounded-lg border-slate-300',
+                    placeholder: 'https://… or use “Pick from OSRS Wiki”',
+                    value: tile.iconFile,
+                    onChange: e => update({ iconFile: e.target.value })
+                  }),
+                  React.createElement('div', { className: 'flex gap-2 mt-2' },
+                    React.createElement('button', {
+                      className: 'btn-stone',
+                      onClick: () => setOpenPicker(true)
+                    }, 'Pick from OSRS Wiki'),
+                    React.createElement('button', {
+                      className: 'btn-stone',
+                      onClick: () => update({ iconFile: '' })
+                    }, 'Clear')
+                  )
+                ),
+                openPicker && React.createElement(IconPicker, {
+                  initialQuery: (tile.name || '').replace(/\s+/g, ' ').trim(),
+                  onPick: (url) => {
+                    if (String(tile.id) === '1') return;  // ← guard
+                    update({ iconFile: url });            // writes to the currently edited tile
+                  },
+                  onClose: () => setOpenPicker(false)
+                })
+              );
+            })(),
 
-        React.createElement('div', null,
-          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
-          React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.tileNumber, disabled: true, readOnly: true })
-        )
-      )
-    );
-  }
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
+              React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.tileNumber, disabled: true, readOnly: true })
+            )
+          )
+        );
+      }
 
       const update = (patch) => setTile({ ...tile, ...patch });
 
@@ -979,166 +1009,166 @@ React.createElement('div', { className: 'flex items-center gap-2' },
       );
     }
 
-function EffectBuilderPanel() {
-  const [kind, setKind] = useState('none');
-  const [trigger, setTrigger] = useState('on_next_roll');
-  const [amount, setAmount] = useState('');
-  const [index, setIndex] = useState('');
+    function EffectBuilderPanel() {
+      const [kind, setKind] = useState('none');
+      const [trigger, setTrigger] = useState('on_next_roll');
+      const [amount, setAmount] = useState('');
+      const [index, setIndex] = useState('');
 
-  const meta = EFFECTS.find(e => e.kind === kind) || EFFECTS[0];
-  const needsAmount = meta.params.some(p => p.name === 'amount');
-  const needsIndex  = meta.params.some(p => p.name === 'index');
-  const iconUrl = getEffectIconUrl(kind);
+      const meta = EFFECTS.find(e => e.kind === kind) || EFFECTS[0];
+      const needsAmount = meta.params.some(p => p.name === 'amount');
+      const needsIndex = meta.params.some(p => p.name === 'index');
+      const iconUrl = getEffectIconUrl(kind);
 
-  const payload = {
-    kind,
-    ...(kind === 'none' ? {} : { trigger }),
-    ...(amount !== '' ? { amount: Number(amount) } : {}),
-    ...(index  !== '' ? { index:  Number(index)  } : {}),
-  };
-
-  const onDragStart = (e) => {
-    const text = JSON.stringify(payload);
-    e.dataTransfer.setData('application/json', text);
-    e.dataTransfer.setData('text/tt-effect', text);
-    e.dataTransfer.effectAllowed = 'copy';
-
-    // Try a custom drag image using the effect icon (fallback to the token element)
-    if (iconUrl) {
-      const img = new Image();
-      img.src = iconUrl;
-      img.onload = () => {
-        e.dataTransfer.setDragImage(img, 10, 10);
+      const payload = {
+        kind,
+        ...(kind === 'none' ? {} : { trigger }),
+        ...(amount !== '' ? { amount: Number(amount) } : {}),
+        ...(index !== '' ? { index: Number(index) } : {}),
       };
-    }
-  };
 
-  return (
-    React.createElement('div', { className: 'space-y-3' },
-      React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-        React.createElement('div', null,
-          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Effect'),
-          React.createElement('select', { className: 'w-full rounded-lg border-slate-300', value: kind, onChange: e => setKind(e.target.value) },
-            EFFECTS.map(x => React.createElement('option', { key: x.kind, value: x.kind }, x.label))
-          )
-        ),
-        (kind !== 'none') && React.createElement('div', null,
-          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Trigger'),
-          React.createElement('select', { className: 'w-full rounded-lg border-slate-300', value: trigger, onChange: e => setTrigger(e.target.value) },
-            [
-              React.createElement('option', { key: 'on_next_roll', value: 'on_next_roll' }, 'on_next_roll'),
-              React.createElement('option', { key: 'on_land', value: 'on_land' }, 'on_land'),
-            ]
-          )
-        )
-      ),
-      (needsAmount) && React.createElement('div', null,
-        React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'amount'),
-        React.createElement('input', { className: 'w-full rounded-lg border-slate-300', type: 'number', min: 1, step: 1, value: amount, onChange: e => setAmount(e.target.value) })
-      ),
-      (needsIndex) && React.createElement('div', null,
-        React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'index'),
-        React.createElement('input', { className: 'w-full rounded-lg border-slate-300', type: 'number', min: 1, step: 1, value: index, onChange: e => setIndex(e.target.value) })
-      ),
-      React.createElement('div', { className: 'text-xs text-slate-500' }, 'Drag this token onto a tile to apply the effect:'),
-      React.createElement('div', {
-        className: 'tt-token',
-        draggable: true,
-        onDragStart,
-        title: 'Drag onto a tile to apply'
-      },
-        iconUrl && React.createElement('img', { src: iconUrl, alt: kind, onError: (e)=>{ e.currentTarget.remove(); } }),
-        React.createElement('span', null, kind === 'none' ? 'None (clear effect)' : `${kind}${amount !== '' ? ` amt=${amount}` : ''}${index !== '' ? ` idx=${index}` : ''}`)
-      )
-    )
-  );
-}
+      const onDragStart = (e) => {
+        const text = JSON.stringify(payload);
+        e.dataTransfer.setData('application/json', text);
+        e.dataTransfer.setData('text/tt-effect', text);
+        e.dataTransfer.effectAllowed = 'copy';
 
-function IconPicker({ initialQuery = '', onPick, onClose }) {
-  const { useState, useEffect } = React;
-  const [q, setQ] = useState(initialQuery || '');
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
+        // Try a custom drag image using the effect icon (fallback to the token element)
+        if (iconUrl) {
+          const img = new Image();
+          img.src = iconUrl;
+          img.onload = () => {
+            e.dataTransfer.setDragImage(img, 10, 10);
+          };
+        }
+      };
 
-  const QUICK = ['Zulrah', 'Vorkath', 'Barrows', 'Slayer', 'Dragon', 'Herblore', 'Agility', 'Fishing', 'Runecraft'];
-
-  const run = async (query) => {
-    setLoading(true); setErr('');
-    try {
-      const list = await wikiSearchFiles(query.trim(), 60);
-      setItems(list);
-    } catch (e) {
-      setErr('Failed to fetch from OSRS Wiki. Try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { if (q) run(q); }, []); // pre-run if initialQuery exists
-
-  return React.createElement('div', {
-    className: 'fixed inset-0 z-50 grid place-items-center bg-black/50 p-4'
-  },
-    React.createElement('div', { className: 'w-full max-w-3xl panel-medieval p-4 relative' },
-      // Close button
-      React.createElement('button', {
-        className: 'absolute right-3 top-3 btn-stone',
-        onClick: onClose
-      }, 'Close'),
-
-      React.createElement('div', { className: 'mb-3 flex items-center gap-2' },
-        React.createElement('input', {
-          className: 'w-full rounded-lg border-slate-300',
-          placeholder: 'Search file name prefix (e.g., "Zulrah", "Dragon", "Herblore")',
-          value: q,
-          onChange: e => setQ(e.target.value)
-        }),
-        React.createElement('button', { className: 'btn-bronze', onClick: () => run(q) }, 'Search')
-      ),
-
-      React.createElement('div', { className: 'flex flex-wrap gap-2 mb-3' },
-        QUICK.map(term =>
-          React.createElement('button', {
-            key: term,
-            className: 'btn-stone',
-            onClick: () => { setQ(term); run(term); }
-          }, term)
-        )
-      ),
-
-      loading && React.createElement('div', { className: 'text-sm text-slate-600' }, 'Loading…'),
-      err && React.createElement('div', { className: 'text-sm text-rose-600' }, err),
-
-      React.createElement('div', {
-        className: 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[60vh] overflow-auto'
-      },
-        items.map(f =>
-          React.createElement('button', {
-            key: f.name,
-            className: 'rounded-lg border border-slate-200 bg-white/70 hover:shadow soft p-2 flex flex-col items-center gap-2',
-            onClick: () => {
-              // Use a slightly larger width in tiles so it’s crisp
-              const picked = wikiFilePathUrl(f.name, 192);
-              onPick?.(picked, f);
-              onClose?.();
-            }
+      return (
+        React.createElement('div', { className: 'space-y-3' },
+          React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Effect'),
+              React.createElement('select', { className: 'w-full rounded-lg border-slate-300', value: kind, onChange: e => setKind(e.target.value) },
+                EFFECTS.map(x => React.createElement('option', { key: x.kind, value: x.kind }, x.label))
+              )
+            ),
+            (kind !== 'none') && React.createElement('div', null,
+              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Trigger'),
+              React.createElement('select', { className: 'w-full rounded-lg border-slate-300', value: trigger, onChange: e => setTrigger(e.target.value) },
+                [
+                  React.createElement('option', { key: 'on_next_roll', value: 'on_next_roll' }, 'on_next_roll'),
+                  React.createElement('option', { key: 'on_land', value: 'on_land' }, 'on_land'),
+                ]
+              )
+            )
+          ),
+          (needsAmount) && React.createElement('div', null,
+            React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'amount'),
+            React.createElement('input', { className: 'w-full rounded-lg border-slate-300', type: 'number', min: 1, step: 1, value: amount, onChange: e => setAmount(e.target.value) })
+          ),
+          (needsIndex) && React.createElement('div', null,
+            React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'index'),
+            React.createElement('input', { className: 'w-full rounded-lg border-slate-300', type: 'number', min: 1, step: 1, value: index, onChange: e => setIndex(e.target.value) })
+          ),
+          React.createElement('div', { className: 'text-xs text-slate-500' }, 'Drag this token onto a tile to apply the effect:'),
+          React.createElement('div', {
+            className: 'tt-token',
+            draggable: true,
+            onDragStart,
+            title: 'Drag onto a tile to apply'
           },
-            React.createElement('img', {
-              src: f.thumbUrl,
-              alt: f.name,
-              className: 'w-20 h-20 object-contain',
-              onError: (e) => { e.currentTarget.style.visibility = 'hidden'; }
-            }),
-            React.createElement('div', {
-              className: 'text-[10px] text-slate-700 text-center break-all'
-            }, f.name)
+            iconUrl && React.createElement('img', { src: iconUrl, alt: kind, onError: (e) => { e.currentTarget.remove(); } }),
+            React.createElement('span', null, kind === 'none' ? 'None (clear effect)' : `${kind}${amount !== '' ? ` amt=${amount}` : ''}${index !== '' ? ` idx=${index}` : ''}`)
           )
         )
-      )
-    )
-  );
-}
+      );
+    }
+
+    function IconPicker({ initialQuery = '', onPick, onClose }) {
+      const { useState, useEffect } = React;
+      const [q, setQ] = useState(initialQuery || '');
+      const [items, setItems] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [err, setErr] = useState('');
+
+      const QUICK = ['Zulrah', 'Vorkath', 'Barrows', 'Slayer', 'Dragon', 'Herblore', 'Agility', 'Fishing', 'Runecraft'];
+
+      const run = async (query) => {
+        setLoading(true); setErr('');
+        try {
+          const list = await wikiSearchFiles(query.trim(), 60);
+          setItems(list);
+        } catch (e) {
+          setErr('Failed to fetch from OSRS Wiki. Try again.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      useEffect(() => { if (q) run(q); }, []); // pre-run if initialQuery exists
+
+      return React.createElement('div', {
+        className: 'fixed inset-0 z-50 grid place-items-center bg-black/50 p-4'
+      },
+        React.createElement('div', { className: 'w-full max-w-3xl panel-medieval p-4 relative' },
+          // Close button
+          React.createElement('button', {
+            className: 'absolute right-3 top-3 btn-stone',
+            onClick: onClose
+          }, 'Close'),
+
+          React.createElement('div', { className: 'mb-3 flex items-center gap-2' },
+            React.createElement('input', {
+              className: 'w-full rounded-lg border-slate-300',
+              placeholder: 'Search file name prefix (e.g., "Zulrah", "Dragon", "Herblore")',
+              value: q,
+              onChange: e => setQ(e.target.value)
+            }),
+            React.createElement('button', { className: 'btn-bronze', onClick: () => run(q) }, 'Search')
+          ),
+
+          React.createElement('div', { className: 'flex flex-wrap gap-2 mb-3' },
+            QUICK.map(term =>
+              React.createElement('button', {
+                key: term,
+                className: 'btn-stone',
+                onClick: () => { setQ(term); run(term); }
+              }, term)
+            )
+          ),
+
+          loading && React.createElement('div', { className: 'text-sm text-slate-600' }, 'Loading…'),
+          err && React.createElement('div', { className: 'text-sm text-rose-600' }, err),
+
+          React.createElement('div', {
+            className: 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[60vh] overflow-auto'
+          },
+            items.map(f =>
+              React.createElement('button', {
+                key: f.name,
+                className: 'rounded-lg border border-slate-200 bg-white/70 hover:shadow soft p-2 flex flex-col items-center gap-2',
+                onClick: () => {
+                  // Use a slightly larger width in tiles so it’s crisp
+                  const picked = wikiFilePathUrl(f.name, 192);
+                  onPick?.(picked, f);
+                  onClose?.();
+                }
+              },
+                React.createElement('img', {
+                  src: f.thumbUrl,
+                  alt: f.name,
+                  className: 'w-20 h-20 object-contain',
+                  onError: (e) => { e.currentTarget.style.visibility = 'hidden'; }
+                }),
+                React.createElement('div', {
+                  className: 'text-[10px] text-slate-700 text-center break-all'
+                }, f.name)
+              )
+            )
+          )
+        )
+      );
+    }
 
 
 
@@ -1159,38 +1189,38 @@ function IconPicker({ initialQuery = '', onPick, onClose }) {
       return (
         React.createElement('div', { className: 'flex flex-wrap items-center gap-2' },
           React.createElement('button', { className: 'btn-bronze', onClick: onNew }, 'Add Tile'),
-React.createElement('button', { className: 'btn-bronze',  onClick: onClear }, 'Clear'),
-React.createElement('button', { className: 'btn-bronze', onClick: onRandom, title: 'Shuffle tiles and apply randomized effects' }, 'Random Board'),
-React.createElement('button', { className: 'btn-bronze', onClick: triggerImport }, 'Import JSON'),
-React.createElement('button', { className: 'btn-bronze', onClick: onExport }, 'Export JSON'),
+          React.createElement('button', { className: 'btn-bronze', onClick: onClear }, 'Clear'),
+          React.createElement('button', { className: 'btn-bronze', onClick: onRandom, title: 'Shuffle tiles and apply randomized effects' }, 'Random Board'),
+          React.createElement('button', { className: 'btn-bronze', onClick: triggerImport }, 'Import JSON'),
+          React.createElement('button', { className: 'btn-bronze', onClick: onExport }, 'Export JSON'),
 
           React.createElement('input', { ref: fileRef, type: 'file', accept: '.json,application/json', className: 'hidden', onChange: onFile }),
           React.createElement('div', { className: 'ml-auto text-sm text-slate-600' }, `${count} tile${count === 1 ? '' : 's'}`)
         )
       );
     }
-function buildSnakePositions(count, ROW_LEN = 15) {
-  const positions = [];
-  let x = 0, y = 0, dir = 1;
+    function buildSnakePositions(count, ROW_LEN = 15) {
+      const positions = [];
+      let x = 0, y = 0, dir = 1;
 
-  for (let i = 0; i < count;) {
-    // Horizontal run
-    for (let h = 0; h < ROW_LEN && i < count; h++, i++) {
-      positions.push({ x, y, type: 'h', hIndex: h, rowIndex: Math.floor(positions.length / ROW_LEN) });
-      if (h < ROW_LEN - 1 && i < count) x += dir;
+      for (let i = 0; i < count;) {
+        // Horizontal run
+        for (let h = 0; h < ROW_LEN && i < count; h++, i++) {
+          positions.push({ x, y, type: 'h', hIndex: h, rowIndex: Math.floor(positions.length / ROW_LEN) });
+          if (h < ROW_LEN - 1 && i < count) x += dir;
+        }
+        // Vertical drop
+        if (i < count) {
+          y++;
+          positions.push({ x, y, type: 'drop' });
+          i++;
+        }
+        // Next row
+        dir *= -1;
+        y++;
+      }
+      return positions;
     }
-    // Vertical drop
-    if (i < count) {
-      y++;
-      positions.push({ x, y, type: 'drop' });
-      i++;
-    }
-    // Next row
-    dir *= -1;
-    y++;
-  }
-  return positions;
-}
 
     function buildSnakePositionsWithStart(countTiles, rowLen = 15) {
       const total = countTiles + 1; // +1 for START
@@ -1227,88 +1257,88 @@ function buildSnakePositions(count, ROW_LEN = 15) {
       return positions;
     }
 
-function PreviewGrid({ tiles, onSelect, selectedId, setTiles, onDropEffect }) {
-  const listRef = React.useRef(null);
-  const ROW_LEN = 15;
+    function PreviewGrid({ tiles, onSelect, selectedId, setTiles, onDropEffect }) {
+      const listRef = React.useRef(null);
+      const ROW_LEN = 15;
 
-  useFitScale(listRef, ROW_LEN);
+      useFitScale(listRef, ROW_LEN);
 
-  // Build positions for ALL playable tiles (1..N)
-  const positions = React.useMemo(
-    () => buildSnakePositions(tiles.length, ROW_LEN),
-    [tiles.length]
-  );
+      // Build positions for ALL playable tiles (1..N)
+      const positions = React.useMemo(
+        () => buildSnakePositions(tiles.length, ROW_LEN),
+        [tiles.length]
+      );
 
-  // Identify first-of-row (horizontal) positions AFTER the first row
-  const rowStartFlags = React.useMemo(() => {
-    const flags = new Array(tiles.length).fill(false);
-    let seenRows = 0;
-    // A horizontal row starts when type==='h' && hIndex===0
-    for (let i = 0; i < positions.length; i++) {
-      const p = positions[i];
-      if (p.type === 'h' && p.hIndex === 0) {
-        // skip the very first horizontal row (no "ROW 1" label)
-        if (seenRows > 0) {
-          // map back to tile index: positions index == tile index for horizontals & drops
-          flags[i] = true;
+      // Identify first-of-row (horizontal) positions AFTER the first row
+      const rowStartFlags = React.useMemo(() => {
+        const flags = new Array(tiles.length).fill(false);
+        let seenRows = 0;
+        // A horizontal row starts when type==='h' && hIndex===0
+        for (let i = 0; i < positions.length; i++) {
+          const p = positions[i];
+          if (p.type === 'h' && p.hIndex === 0) {
+            // skip the very first horizontal row (no "ROW 1" label)
+            if (seenRows > 0) {
+              // map back to tile index: positions index == tile index for horizontals & drops
+              flags[i] = true;
+            }
+            seenRows++;
+          }
         }
-        seenRows++;
-      }
-    }
-    return flags;
-  }, [positions]);
+        return flags;
+      }, [positions]);
 
-  // Sortable (exclude first tile from dragging by CSS class)
-  useSortable(listRef, tiles, (newArr) => {
-    // Reorder by DOM and resequence 1..N
-    newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
-    setTiles(newArr.slice());
-  });
+      // Sortable (exclude first tile from dragging by CSS class)
+      useSortable(listRef, tiles, (newArr) => {
+        // Reorder by DOM and resequence 1..N
+        newArr.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
+        setTiles(newArr.slice());
+      });
 
-  const cellStyleFor = (i) => {
-    const p = positions[i];
-    return { gridColumn: (p.x + 1), gridRow: (p.y + 1) };
-  };
+      const cellStyleFor = (i) => {
+        const p = positions[i];
+        return { gridColumn: (p.x + 1), gridRow: (p.y + 1) };
+      };
 
-  return (
-    React.createElement(
-      'div',
-      {
-        ref: listRef,
-        className: 'tt-grid',
-        style: { gridTemplateColumns: `repeat(${ROW_LEN}, var(--tile))` },
-      },
-      tiles.map((t, i) => {
-        // Markers: START on first tile, FINISH on last; ROW labels on subsequent horizontal rows
-        let marker = null;
-        if (i === 0) marker = 'START';
-        else if (i === tiles.length - 1) marker = 'FINISH';
-        else if (rowStartFlags[i]) {
-          // Compute visible row # (1st horizontal row had no label)
-          const rowsBefore = rowStartFlags.slice(0, i + 1).filter(Boolean).length;
-          marker = `ROW ${rowsBefore + 1}`; // “ROW 2”, “ROW 3”, …
-        }
-
-        return React.createElement(
+      return (
+        React.createElement(
           'div',
           {
-            key: t.id,
-            'data-id': t.id,
-            className: `tt-cell ${i === 0 ? 'tt-fixed' : ''}`, // first tile is fixed
-            style: cellStyleFor(i),
+            ref: listRef,
+            className: 'tt-grid',
+            style: { gridTemplateColumns: `repeat(${ROW_LEN}, var(--tile))` },
           },
-React.createElement(TileCard, {
-  tile: t,
-  onSelect: () => onSelect(t.id),
-  selected: t.id === selectedId,
-  marker,
-  onDropEffect: (eff) => onDropEffect(t.id, eff)
-})
-        );
-      })
-    )
-  );
-}
+          tiles.map((t, i) => {
+            // Markers: START on first tile, FINISH on last; ROW labels on subsequent horizontal rows
+            let marker = null;
+            if (i === 0) marker = 'START';
+            else if (i === tiles.length - 1) marker = 'FINISH';
+            else if (rowStartFlags[i]) {
+              // Compute visible row # (1st horizontal row had no label)
+              const rowsBefore = rowStartFlags.slice(0, i + 1).filter(Boolean).length;
+              marker = `ROW ${rowsBefore + 1}`; // “ROW 2”, “ROW 3”, …
+            }
+
+            return React.createElement(
+              'div',
+              {
+                key: t.id,
+                'data-id': t.id,
+                className: `tt-cell ${i === 0 ? 'tt-fixed' : ''}`, // first tile is fixed
+                style: cellStyleFor(i),
+              },
+              React.createElement(TileCard, {
+                tile: t,
+                onSelect: () => onSelect(t.id),
+                selected: t.id === selectedId,
+                marker,
+                onDropEffect: (eff) => onDropEffect(t.id, eff)
+              })
+            );
+          })
+        )
+      );
+    }
     function BoardSettings({ count }) {
       const rows = Math.ceil(count / 15);
       return React.createElement('div', { className: 'flex flex-wrap items-center gap-4' },
@@ -1324,6 +1354,7 @@ React.createElement(TileCard, {
 
     function App() {
       const applyEffectToTile = (tileId, eff) => {
+        if (String(tileId) === '1') return; // ← ignore START defensively
         setTiles(prev => prev.map(t => {
           if (t.id !== tileId) return t;
           if (!eff || eff.kind === 'none') {
@@ -1369,62 +1400,62 @@ React.createElement(TileCard, {
       };
 
       const randomizeBoard = () => {
-  setTiles(prev => {
-    if (!Array.isArray(prev) || prev.length <= 1) return prev;
+        setTiles(prev => {
+          if (!Array.isArray(prev) || prev.length <= 1) return prev;
 
-    // Copy and split: keep START (index 0) fixed
-    const head = { ...prev[0] };
-    const rest = prev.slice(1).map(t => ({ ...t }));
+          // Copy and split: keep START (index 0) fixed
+          const head = { ...prev[0] };
+          const rest = prev.slice(1).map(t => ({ ...t }));
 
-    // Shuffle the playable tiles
-    for (let i = rest.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [rest[i], rest[j]] = [rest[j], rest[i]];
-    }
+          // Shuffle the playable tiles
+          for (let i = rest.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [rest[i], rest[j]] = [rest[j], rest[i]];
+          }
 
-    // Clear effects first
-    for (const t of rest) {
-      t.effect = { kind: 'none' };
-      t.meta   = { presetId: 'none', opts: {}, attached: false };
-    }
+          // Clear effects first
+          for (const t of rest) {
+            t.effect = { kind: 'none' };
+            t.meta = { presetId: 'none', opts: {}, attached: false };
+          }
 
-    // Decide how many tiles to effect
-    const playableCount = rest.length;
-    const toAffect = effectTargetCount(playableCount);
+          // Decide how many tiles to effect
+          const playableCount = rest.length;
+          const toAffect = effectTargetCount(playableCount);
 
-    // Choose unique target indices in rest[]
-    const picks = new Set();
-    while (picks.size < toAffect) {
-      picks.add(Math.floor(Math.random() * playableCount)); // 0..playableCount-1
-    }
+          // Choose unique target indices in rest[]
+          const picks = new Set();
+          while (picks.size < toAffect) {
+            picks.add(Math.floor(Math.random() * playableCount)); // 0..playableCount-1
+          }
 
-    // Pool of effect kinds (exclude 'none')
-    const kinds = EFFECTS.map(e => e.kind).filter(k => k !== 'none');
+          // Pool of effect kinds (exclude 'none')
+          const kinds = EFFECTS.map(e => e.kind).filter(k => k !== 'none');
 
-    // Apply randomized effects
-    for (const idx of picks) {
-      const kind = kinds[Math.floor(Math.random() * kinds.length)];
-      const eff = buildRandomEffect(kind, playableCount);
-      const opts = {};
-      if ('amount' in eff) opts.amount = eff.amount;
-      if ('index'  in eff) opts.index  = eff.index;
+          // Apply randomized effects
+          for (const idx of picks) {
+            const kind = kinds[Math.floor(Math.random() * kinds.length)];
+            const eff = buildRandomEffect(kind, playableCount);
+            const opts = {};
+            if ('amount' in eff) opts.amount = eff.amount;
+            if ('index' in eff) opts.index = eff.index;
 
-      rest[idx].effect = eff;
-      rest[idx].meta   = { presetId: eff.kind, opts, attached: true };
-    }
+            rest[idx].effect = eff;
+            rest[idx].meta = { presetId: eff.kind, opts, attached: true };
+          }
 
-    // Ensure START tile is clean
-    head.effect = { kind: 'none' };
-    head.meta   = { presetId: 'none', opts: {}, attached: false };
+          // Ensure START tile is clean
+          head.effect = { kind: 'none' };
+          head.meta = { presetId: 'none', opts: {}, attached: false };
 
-    const next = [head, ...rest];
+          const next = [head, ...rest];
 
-    // Resequence IDs and tileNumbers 1..N
-    next.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
+          // Resequence IDs and tileNumbers 1..N
+          next.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
 
-    return next;
-  });
-};
+          return next;
+        });
+      };
 
       const clearAll = () => {
         if (confirm('Clear all tiles?')) {
@@ -1507,16 +1538,16 @@ React.createElement(TileCard, {
             )
           ),
 
-         React.createElement('div', { className: 'panel-medieval p-4' },
- React.createElement(Toolbar, {
-  onNew: addTile,
-  onClear: clearAll,
-  onImport: importJSON,
-  onExport: exportJSON,
-  onRandom: randomizeBoard,
-  count: tiles.length
-})
-),
+          React.createElement('div', { className: 'panel-medieval p-4' },
+            React.createElement(Toolbar, {
+              onNew: addTile,
+              onClear: clearAll,
+              onImport: importJSON,
+              onExport: exportJSON,
+              onRandom: randomizeBoard,
+              count: tiles.length
+            })
+          ),
 
           React.createElement('div', { className: 'panel-medieval p-4' },
             React.createElement(BoardSettings, { count: tiles.length })
@@ -1527,12 +1558,12 @@ React.createElement(TileCard, {
             React.createElement('div', { className: 'space-y-3' },
               React.createElement('div', { className: 'tt-board-wrap' },
                 React.createElement(PreviewGrid, {
-  tiles,
-  onSelect: setSelectedId,
-  selectedId,
-  setTiles,
-  onDropEffect: (tileId, eff) => applyEffectToTile(tileId, eff)
-})
+                  tiles,
+                  onSelect: setSelectedId,
+                  selectedId,
+                  setTiles,
+                  onDropEffect: (tileId, eff) => applyEffectToTile(tileId, eff)
+                })
               ),
               React.createElement('div', { className: 'text-xs text-slate-500 editor-prose' }, 'Tip: drag a tile to reorder. Export to download the JSON.')
             ),
