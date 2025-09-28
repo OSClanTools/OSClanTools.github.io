@@ -461,6 +461,16 @@
 
     const DEFAULT_ICON = 'https://cdn.jsdelivr.net/gh/tabler/tabler-icons@latest/icons/outlet.svg';
 
+    const WIKI_API = 'https://oldschool.runescape.wiki/api.php';
+
+    function download(filename, text) {
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
 // Small backoff for 429s (retry once)
 async function backoffFetch(url, opts = {}, tries = 2) {
   let last;
@@ -476,13 +486,12 @@ async function backoffFetch(url, opts = {}, tries = 2) {
 }
 
 // Session memo to avoid refetching
-const WIKI_MEMO = new Map(); // key: `ii|width|filename` -> {url, thumburl}
+const WIKI_MEMO = new Map();          // filename-level memo: `ii|width|name` -> { fileUrl, thumbUrl }
+const WIKI_QUERY_MEMO = new Map();    // query-level memo: `ai|prefix|width` -> [{ name, fileUrl, thumbUrl }]
 
 // Resolve file metadata (thumb + original) for many files in one POST
 async function wikiGetImageInfo(fileNames, width = 192) {
   const results = [];
-
-  // split into chunks of ~40 to keep POST small
   for (let i = 0; i < fileNames.length; i += 40) {
     const chunk = fileNames.slice(i, i + 40);
     const toFetch = [];
@@ -499,16 +508,17 @@ async function wikiGetImageInfo(fileNames, width = 192) {
       const body = new URLSearchParams({
         action: 'query',
         format: 'json',
-        origin: '*',              // CORS
+        origin: '*',
         prop: 'imageinfo',
         iiprop: 'url',
         iiurlwidth: String(width),
+        maxage: '86400',
+        smaxage: '86400',
         titles: toFetch.map(n => `File:${n}`).join('|'),
       });
 
       const res = await backoffFetch(WIKI_API, { method: 'POST', body });
       const json = await res.json();
-
       const pages = json?.query?.pages || {};
       for (const p of Object.values(pages)) {
         const title = (p.title || '').replace(/^File:/, '');
@@ -521,29 +531,36 @@ async function wikiGetImageInfo(fileNames, width = 192) {
 
     results.push(...cached);
   }
-
   return results;
 }
 
 // Search by filename prefix, then enrich with imageinfo (thumbs at 192px)
 async function wikiSearchFiles(prefix, limit = 40, thumbWidth = 192) {
+  const q = (prefix || '').trim();
+  if (q.length < 2) return []; // avoid hitting API for empty/1-char inputs
+
+  const memoKey = `ai|${q}|${thumbWidth}`;
+  if (WIKI_QUERY_MEMO.has(memoKey)) return WIKI_QUERY_MEMO.get(memoKey);
+
   const qs = new URLSearchParams({
     action: 'query',
     format: 'json',
     origin: '*',
     list: 'allimages',
-    aiprefix: prefix || '',
+    aiprefix: q,
     ailimit: String(Math.min(limit, 50)),
+    maxage: '86400',
+    smaxage: '86400',
   });
 
   const res = await backoffFetch(`${WIKI_API}?${qs.toString()}`);
   const json = await res.json().catch(() => ({}));
-  const names = (json?.query?.allimages || []).map(img =>
-    img.name || (img.title || '').replace(/^File:/, '')
-  ).filter(Boolean);
+  const names = (json?.query?.allimages || [])
+    .map(img => img.name || (img.title || '').replace(/^File:/, ''))
+    .filter(Boolean);
 
-  // one batched resolve → direct CDN thumbnails (no Special:FilePath)
-  const info = await wikiGetImageInfo(names, thumbWidth);
+  const info = names.length ? await wikiGetImageInfo(names, thumbWidth) : [];
+  WIKI_QUERY_MEMO.set(memoKey, info);
   return info; // [{ name, fileUrl, thumbUrl }]
 }
 
@@ -1055,11 +1072,11 @@ function EditorPanel({ tile, setTile, onDuplicate, onDelete }) {
     ),
 
     // Modal appears only for non-start tiles
-    openPicker && React.createElement(IconPicker, {
-      initialQuery: (tile.name || '').replace(/\s+/g, ' ').trim(),
-      onPick: (url) => update({ iconFile: url }),
-      onClose: () => setOpenPicker(false)
-    })
+openPicker && React.createElement(IconPicker, {
+  initialQuery: '',
+  onPick: (url) => update({ iconFile: url }),
+  onClose: () => setOpenPicker(false)
+})
   );
 }
 
@@ -1139,100 +1156,78 @@ function EditorPanel({ tile, setTile, onDuplicate, onDelete }) {
       );
     }
 
-    function IconPicker({ initialQuery = '', onPick, onClose }) {
-      const { useState, useEffect } = React;
-      const [q, setQ] = useState(initialQuery || '');
-      const [items, setItems] = useState([]);
-      const [loading, setLoading] = useState(false);
-      const [err, setErr] = useState('');
+function IconPicker({ initialQuery = '', onPick, onClose }) {
+  const { useState } = React;
+  const [q, setQ] = useState(initialQuery || '');
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState('');
 
-      const QUICK = ['Zulrah', 'Vorkath', 'Barrows', 'Slayer', 'Dragon', 'Herblore', 'Agility', 'Fishing', 'Runecraft'];
+  const QUICK = ['Zulrah', 'Vorkath', 'Barrows', 'Slayer', 'Dragon', 'Herblore', 'Agility', 'Fishing', 'Runecraft'];
 
-const run = async (query) => {
-  setLoading(true); setErr('');
-  try {
-    const list = await wikiSearchFiles(query.trim(), 40, 192); // 192px thumbs
-    setItems(list);
-  } catch (e) {
-    setErr('Wiki rate-limited or unreachable. Try again in a moment.');
-  } finally {
-    setLoading(false);
-  }
-};
+  const run = async (query) => {
+    const term = (query || '').trim();
+    if (term.length < 2) { setItems([]); setErr(''); return; }  // avoid spammy calls
+    setLoading(true); setErr('');
+    try {
+      const list = await wikiSearchFiles(term, 40, 192);
+      setItems(list);
+    } catch {
+      setErr('Wiki rate-limited or unreachable. Try again in a moment.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-// ... in the grid button onClick:
-onClick: () => {
-  // Use direct 192px thumb (already resolved), no further fetch
-  onPick?.(f.thumbUrl, f);
-  onClose?.();
-}
+  return React.createElement('div', { className: 'fixed inset-0 z-50 grid place-items-center bg-black/50 p-4' },
+    React.createElement('div', { className: 'w-full max-w-3xl panel-medieval p-4 relative' },
+      React.createElement('button', { className: 'absolute right-3 top-3 btn-stone', onClick: onClose }, 'Close'),
 
-      useEffect(() => { if (q) run(q); }, []); // pre-run if initialQuery exists
+      React.createElement('div', { className: 'mb-3 flex items-center gap-2' },
+        React.createElement('input', {
+          className: 'w-full rounded-lg border-slate-300',
+          placeholder: 'Search file name prefix (e.g., "Zulrah", "Dragon", "Herblore")',
+          value: q,
+          onChange: e => setQ(e.target.value)
+        }),
+        React.createElement('button', {
+          className: 'btn-bronze',
+          disabled: (q.trim().length < 2) || loading,
+          onClick: () => run(q)
+        }, loading ? 'Searching…' : 'Search')
+      ),
 
-      return React.createElement('div', {
-        className: 'fixed inset-0 z-50 grid place-items-center bg-black/50 p-4'
-      },
-        React.createElement('div', { className: 'w-full max-w-3xl panel-medieval p-4 relative' },
-          // Close button
+      React.createElement('div', { className: 'flex flex-wrap gap-2 mb-3' },
+        QUICK.map(term =>
           React.createElement('button', {
-            className: 'absolute right-3 top-3 btn-stone',
-            onClick: onClose
-          }, 'Close'),
+            key: term,
+            className: 'btn-stone',
+            onClick: () => { setQ(term); run(term); }
+          }, term)
+        )
+      ),
 
-          React.createElement('div', { className: 'mb-3 flex items-center gap-2' },
-            React.createElement('input', {
-              className: 'w-full rounded-lg border-slate-300',
-              placeholder: 'Search file name prefix (e.g., "Zulrah", "Dragon", "Herblore")',
-              value: q,
-              onChange: e => setQ(e.target.value)
-            }),
-            React.createElement('button', { className: 'btn-bronze', onClick: () => run(q) }, 'Search')
-          ),
+      err && React.createElement('div', { className: 'text-sm text-rose-600' }, err),
 
-          React.createElement('div', { className: 'flex flex-wrap gap-2 mb-3' },
-            QUICK.map(term =>
-              React.createElement('button', {
-                key: term,
-                className: 'btn-stone',
-                onClick: () => { setQ(term); run(term); }
-              }, term)
-            )
-          ),
-
-          loading && React.createElement('div', { className: 'text-sm text-slate-600' }, 'Loading…'),
-          err && React.createElement('div', { className: 'text-sm text-rose-600' }, err),
-
-          React.createElement('div', {
-            className: 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[60vh] overflow-auto'
+      React.createElement('div', { className: 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[60vh] overflow-auto' },
+        items.map(f =>
+          React.createElement('button', {
+            key: f.name,
+            className: 'rounded-lg border border-slate-200 bg-white/70 hover:shadow soft p-2 flex flex-col items-center gap-2',
           },
-            items.map(f =>
-              React.createElement('button', {
-                key: f.name,
-                className: 'rounded-lg border border-slate-200 bg-white/70 hover:shadow soft p-2 flex flex-col items-center gap-2',
-                onClick: () => {
-                  // Use a slightly larger width in tiles so it’s crisp
-                  const picked = wikiFilePathUrl(f.name, 192);
-                  onPick?.(picked, f);
-                  onClose?.();
-                }
-              },
-                React.createElement('img', {
-                  src: f.thumbUrl,
-                  alt: f.name,
-                  className: 'w-20 h-20 object-contain',
-                  onError: (e) => { e.currentTarget.style.visibility = 'hidden'; }
-                }),
-                React.createElement('div', {
-                  className: 'text-[10px] text-slate-700 text-center break-all'
-                }, f.name)
-              )
-            )
+            React.createElement('img', {
+              src: f.thumbUrl || f.fileUrl,
+              alt: f.name,
+              className: 'w-20 h-20 object-contain',
+              onError: (e) => { e.currentTarget.style.visibility = 'hidden'; }
+            }),
+            React.createElement('div', { className: 'text-[10px] text-slate-700 text-center break-all' }, f.name)
           )
         )
-      );
-    }
-
-
+      )
+    )
+  );
+}
 
     function Toolbar({ onNew, onClear, onImport, onExport, onRandom, count }) {
       const fileRef = useRef(null);
