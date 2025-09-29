@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Creeps Inc — Events</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          boxShadow: {
+            soft: "0 8px 30px rgba(0,0,0,0.08)",
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* RuneScape style font */
+    @font-face {
+      font-family: 'RuneScape-Quill';
+      src: url('assets/font/RuneScape-Quill.otf') format('opentype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      --bronze: #cd7f32;
+      --bronze-dark: #8a531e;
+      --ink: #2c1a0e;
+    }
+
+    html, body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: url('assets/images/bg.png') center / cover fixed no-repeat;
+      min-height: 100vh;
+    }
+
+    /* Parchment panel with bronze trim */
+    .panel-medieval {
+      position: relative;
+      background: url('assets/images/parchment.png') center/cover no-repeat, rgba(250, 245, 230, 0.86);
+      border: 3px solid var(--bronze);
+      border-radius: 14px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.18), inset 0 0 0 1.5px var(--bronze-dark);
+      overflow: hidden;
+    }
+    .panel-medieval::before {
+      content: "";
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse at 30% -10%, rgba(255,255,255,.25), transparent 50%),
+        radial-gradient(ellipse at 70% 110%, rgba(0,0,0,.08), transparent 50%);
+      pointer-events: none;
+    }
+
+    /* Bronze button */
+    .btn-bronze {
+      background: linear-gradient(180deg, #d8a25e, #b0792e);
+      color: #1b1108;
+      border: 1px solid var(--bronze-dark);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-weight: 700;
+      box-shadow: 0 3px 6px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.25);
+      transition: transform .06s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    .btn-bronze:hover { transform: translateY(-1px); }
+    .btn-bronze:active { transform: translateY(0); box-shadow: 0 2px 4px rgba(0,0,0,.2); }
+
+    /* Event card hover */
+    .event-card { transition: transform .12s ease, box-shadow .12s ease; }
+    .event-card:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(0,0,0,.22), inset 0 0 0 1.5px var(--bronze-dark); }
+
+    /* Headings with quill font */
+    .heading-medieval {
+      font-family: 'RuneScape-Quill', Inter, ui-sans-serif;
+      letter-spacing: .3px;
+      color: var(--ink);
+      text-shadow: 0 1px 0 rgba(0,0,0,.35);
+    }
+
+    /* Toast (coming soon) */
+    .toast {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      z-index: 50;
+      transform: translateY(10px);
+      opacity: 0;
+      transition: opacity .2s ease, transform .2s ease;
+    }
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  </style>
+</head>
+
+<body class="text-slate-900">
+  <!-- Top bar -->
+  <header class="max-w-6xl mx-auto px-4 pt-6">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 rounded-xl bg-indigo-600 text-white grid place-items-center font-bold shadow-soft">CI</div>
+      <div>
+        <h1 class="text-xl font-semibold">Creeps Inc — Events Hub</h1>
+        <p class="text-slate-600 text-sm">Choose an event type to get started.</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="max-w-6xl mx-auto px-4 mt-8">
+    <div class="panel-medieval p-6 md:p-8">
+      <div class="md:flex items-center justify-between gap-6">
+        <div>
+          <h2 class="heading-medieval text-2xl md:text-3xl">Adventure Awaits</h2>
+          <p class="mt-2 text-slate-700 max-w-2xl">
+            Build boards, rally teams, and dive into OSRS clan events. Pick your game mode below.
+          </p>
+        </div>
+        <a href="tiletrials.html" class="btn-bronze mt-4 md:mt-0 inline-flex items-center gap-2">
+          Open Tile Trials Editor
+          <span aria-hidden="true">→</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Event grid -->
+  <main class="max-w-6xl mx-auto px-4 mt-8 mb-16">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <!-- Tile Trials -->
+      <a href="tiletrials.html" class="panel-medieval event-card p-5 block focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/60">
+        <div class="flex items-start justify-between gap-4">
+          <h3 class="heading-medieval text-xl">Tile Trials</h3>
+          <span class="text-xs font-semibold bg-emerald-600 text-white rounded-md px-2.5 py-1 shadow">Ready</span>
+        </div>
+        <p class="mt-3 text-sm text-slate-700">
+          Snake-path board builder with effects, icons, and JSON export for your Discord bot.
+        </p>
+        <div class="mt-4">
+          <span class="btn-bronze inline-block">Open</span>
+        </div>
+      </a>
+
+      <!-- Classic Bingo (placeholder) -->
+      <a href="#" data-soon class="panel-medieval event-card p-5 block cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/60">
+        <div class="flex items-start justify-between gap-4">
+          <h3 class="heading-medieval text-xl">Classic Bingo</h3>
+          <span class="text-xs font-semibold bg-slate-500 text-white rounded-md px-2.5 py-1 shadow">Soon</span>
+        </div>
+        <p class="mt-3 text-sm text-slate-700">
+          5×5 boards, themed tasks, and clan-wide race to complete rows and patterns.
+        </p>
+        <div class="mt-4">
+          <span class="btn-bronze inline-block opacity-70">Preview</span>
+        </div>
+      </a>
+
+      <!-- Nexus of Nodes (placeholder) -->
+      <a href="#" data-soon class="panel-medieval event-card p-5 block cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/60">
+        <div class="flex items-start justify-between gap-4">
+          <h3 class="heading-medieval text-xl">Nexus of Nodes</h3>
+          <span class="text-xs font-semibold bg-slate-500 text-white rounded-md px-2.5 py-1 shadow">Soon</span>
+        </div>
+        <p class="mt-3 text-sm text-slate-700">
+          Branching task tree: clear nodes to unlock tougher paths and rack up points.
+        </p>
+        <div class="mt-4">
+          <span class="btn-bronze inline-block opacity-70">Preview</span>
+        </div>
+      </a>
+
+      <!-- Fog of Fate (placeholder) -->
+      <a href="#" data-soon class="panel-medieval event-card p-5 block cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/60">
+        <div class="flex items-start justify-between gap-4">
+          <h3 class="heading-medieval text-xl">Fog of Fate</h3>
+          <span class="text-xs font-semibold bg-slate-500 text-white rounded-md px-2.5 py-1 shadow">Soon</span>
+        </div>
+        <p class="mt-3 text-sm text-slate-700">
+          Two teams push through hidden tiles; reveal tasks as you advance toward the center.
+        </p>
+        <div class="mt-4">
+          <span class="btn-bronze inline-block opacity-70">Preview</span>
+        </div>
+      </a>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="max-w-6xl mx-auto px-4 pb-10 text-center text-xs text-slate-700">
+    Made to work with OSClanTools Discord Bot — By Wni.
+  </footer>
+
+  <!-- Coming Soon toast -->
+  <div id="toast" class="toast">
+    <div class="panel-medieval px-4 py-3 min-w-[260px]">
+      <div class="flex items-start gap-3">
+        <div class="w-8 h-8 rounded-md bg-slate-900/80 text-white grid place-items-center text-sm">ℹ️</div>
+        <div>
+          <div class="heading-medieval text-base">Coming soon</div>
+          <div class="text-sm text-slate-700">This event type isn’t available yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simple "Coming soon" toast for placeholder links
+    const toast = document.getElementById('toast');
+    let toastTimer = null;
+
+    const showToast = () => {
+      toast.classList.add('show');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+    };
+
+    document.querySelectorAll('[data-soon]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        showToast();
+      });
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          showToast();
+        }
+      });
+    });
+  </script>
+</body>
+</html>
