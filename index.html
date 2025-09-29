@@ -26,7 +26,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    /* RuneScape style font */
+    /* RuneScape-style font */
     @font-face {
       font-family: 'RuneScape-Quill';
       src: url('assets/font/RuneScape-Quill.otf') format('opentype');
@@ -43,8 +43,37 @@
 
     html, body {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      background: url('assets/images/bg.png') center / cover fixed no-repeat;
+      /* Fallback background in case YT fails to load */
+      background: #000 url('assets/images/bg.png') center / cover fixed no-repeat;
       min-height: 100vh;
+    }
+
+    /* ===== Background YouTube video ===== */
+    .video-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;            /* sits behind all content */
+      overflow: hidden;
+      pointer-events: none;   /* ignore clicks */
+    }
+    .video-bg iframe {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      /* Cover logic: swap sizing based on aspect */
+      width: 177.7778vh;  /* 100 * 16/9 */
+      height: 100vh;
+    }
+    @media (min-aspect-ratio: 16/9) {
+      .video-bg iframe {
+        width: 100vw;
+        height: 56.25vw; /* 100 * 9/16 */
+      }
+    }
+    .video-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.5); /* 50% overlay */
     }
 
     /* Parchment panel with bronze trim */
@@ -109,13 +138,19 @@
 </head>
 
 <body class="text-slate-900">
+  <!-- Background video layer -->
+  <div class="video-bg" aria-hidden="true">
+    <div id="yt-player"></div>
+    <div class="video-overlay"></div>
+  </div>
+
   <!-- Top bar -->
   <header class="max-w-6xl mx-auto px-4 pt-6">
     <div class="flex items-center gap-3">
       <div class="w-11 h-11 rounded-xl bg-indigo-600 text-white grid place-items-center font-bold shadow-soft">CI</div>
       <div>
-        <h1 class="text-xl font-semibold">OSClan Tools — Events Hub</h1>
-        <p class="text-slate-600 text-sm">Choose an event type to get started.</p>
+        <h1 class="text-xl font-semibold">OSClanTools — Events Hub</h1>
+        <p class="text-slate-200 text-sm">Choose an event type to get started.</p>
       </div>
     </div>
   </header>
@@ -148,7 +183,7 @@
           <span class="text-xs font-semibold bg-emerald-600 text-white rounded-md px-2.5 py-1 shadow">Ready</span>
         </div>
         <p class="mt-3 text-sm text-slate-700">
-          Snake-path style board with tiles, effects and race. Teams race to the end completing tasks along the way.
+          Snake-path board builder with effects, icons, and JSON export for your Discord bot.
         </p>
         <div class="mt-4">
           <span class="btn-bronze inline-block">Open</span>
@@ -200,7 +235,7 @@
   </main>
 
   <!-- Footer -->
-  <footer class="max-w-6xl mx-auto px-4 pb-10 text-center text-xs text-slate-700">
+  <footer class="max-w-6xl mx-auto px-4 pb-10 text-center text-xs text-slate-300">
     Made to work with OSClanTools Discord Bot — By Wni.
   </footer>
 
@@ -217,27 +252,78 @@
     </div>
   </div>
 
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
   <script>
+    const YT_VIDEO_ID = 'aZQJ1nJfyIo';
+    const LOOP_START = 1;   // 0:01
+    const LOOP_END = 36;    // 0:36
+    let ytPlayer, loopTimer;
+
+    function onYouTubeIframeAPIReady() {
+      ytPlayer = new YT.Player('yt-player', {
+        videoId: YT_VIDEO_ID,
+        playerVars: {
+          autoplay: 1,
+          controls: 0,
+          disablekb: 1,
+          fs: 0,
+          modestbranding: 1,
+          rel: 0,
+          playsinline: 1,
+          loop: 1,
+          playlist: YT_VIDEO_ID,  // required for loop
+          start: LOOP_START,
+          end: LOOP_END,
+          mute: 1,
+          iv_load_policy: 3,
+          cc_load_policy: 0
+        },
+        events: {
+          onReady: (e) => {
+            try { e.target.mute(); } catch {}
+            try { e.target.setVolume(0); } catch {}
+            e.target.seekTo(LOOP_START, true);
+            e.target.playVideo();
+
+            // Hard-guard loop for the 1s..36s segment
+            loopTimer = setInterval(() => {
+              if (!ytPlayer || typeof ytPlayer.getCurrentTime !== 'function') return;
+              const t = ytPlayer.getCurrentTime();
+              if (t >= (LOOP_END - 0.25)) {
+                ytPlayer.seekTo(LOOP_START, true);
+              }
+            }, 250);
+          },
+          onStateChange: (e) => {
+            if (e.data === YT.PlayerState.ENDED) {
+              ytPlayer.seekTo(LOOP_START, true);
+              ytPlayer.playVideo();
+            }
+            if (e.data === YT.PlayerState.PLAYING) {
+              try { ytPlayer.mute(); } catch {}
+            }
+          }
+        }
+      });
+    }
+
+    window.addEventListener('beforeunload', () => {
+      if (loopTimer) clearInterval(loopTimer);
+    });
+
     // Simple "Coming soon" toast for placeholder links
     const toast = document.getElementById('toast');
     let toastTimer = null;
-
     const showToast = () => {
       toast.classList.add('show');
       if (toastTimer) clearTimeout(toastTimer);
       toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
     };
-
     document.querySelectorAll('[data-soon]').forEach(el => {
-      el.addEventListener('click', (e) => {
-        e.preventDefault();
-        showToast();
-      });
+      el.addEventListener('click', (e) => { e.preventDefault(); showToast(); });
       el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          showToast();
-        }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showToast(); }
       });
     });
   </script>
