@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Login — Creeps Inc</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @font-face { font-family: 'RuneScape-Quill'; src: url('assets/font/RuneScape-Quill.otf') format('opentype'); font-display: swap; }
+    :root { --bronze:#cd7f32; --bronze-dark:#8a531e; }
+    body { min-height:100vh; background:url('assets/images/bg.png') center/cover fixed no-repeat; }
+    .panel-medieval{background:url('assets/images/parchment.png') center/cover no-repeat, rgba(250,245,230,.86); border:3px solid var(--bronze); border-radius:14px; box-shadow:0 12px 30px rgba(0,0,0,.18), inset 0 0 0 1.5px var(--bronze-dark);}
+    .btn-bronze{background:linear-gradient(180deg,#d8a25e,#b0792e); color:#1b1108; border:1px solid var(--bronze-dark); border-radius:12px; padding:10px 14px; font-weight:700; box-shadow:0 3px 6px rgba(0,0,0,.22), inset 0 0 0 1px rgba(255,255,255,.25);}
+  </style>
+</head>
+<body class="text-slate-900 grid place-items-center p-6">
+  <div class="panel-medieval p-6 w-full max-w-md">
+    <h1 class="text-xl font-semibold">Sign in</h1>
+    <p class="text-sm text-slate-700 mt-1">Use Discord to access the Admin Control Panel.</p>
+    <a href="/auth/login" class="btn-bronze inline-flex items-center gap-2 mt-4">
+      <span>Sign in with Discord</span> <span aria-hidden>→</span>
+    </a>
+  </div>
+</body>
+</html>
