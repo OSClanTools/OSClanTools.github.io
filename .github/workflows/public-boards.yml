@@ -1,0 +1,47 @@
+name: Append Public Board
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot:
+        description: 'Paste snapshot JSON: either a tiles array OR an object with a "tiles" array'
+        required: true
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure data file
+        run: |
+          mkdir -p data
+          test -f data/public-boards.json || echo '{"boards":[]}' > data/public-boards.json
+
+      - name: Normalize input -> entry
+        id: norm
+        run: |
+          SNAP='${{ github.event.inputs.snapshot }}'
+          printf '%s' "$SNAP" > /tmp/snap.json
+          if jq -e 'has("tiles")' /tmp/snap.json >/dev/null; then
+            jq -c '{id:(.id // (now|tostring)), ts:(.ts // (now*1000|floor)), tiles:.tiles}' /tmp/snap.json > /tmp/entry.json
+          else
+            jq -c '{id:(now|tostring), ts:(now*1000|floor), tiles:.}' /tmp/snap.json > /tmp/entry.json
+          fi
+          echo "entry=$(cat /tmp/entry.json)" >> $GITHUB_OUTPUT
+
+      - name: Append, dedupe, keep last 10
+        env:
+          ENTRY: ${{ steps.norm.outputs.entry }}
+        run: |
+          jq --argjson e "$ENTRY" '
+            .boards = ([ $e ] + (.boards // [])) |
+            .boards = ( .boards | unique_by( .tiles | tojson ) | .[:10] )
+          ' data/public-boards.json > data/public-boards.new.json
+          mv data/public-boards.new.json data/public-boards.json
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/public-boards.json
+          git commit -m "Append public board snapshot"
+          git push
