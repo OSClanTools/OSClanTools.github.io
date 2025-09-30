@@ -464,131 +464,139 @@
     const WIKI_API = 'https://oldschool.runescape.wiki/api.php';
 
     function download(filename, text) {
-  const blob = new Blob([text], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
-
-// Small backoff for 429s (retry once)
-async function backoffFetch(url, opts = {}, tries = 2) {
-  let last;
-  for (let i = 0; i < tries; i++) {
-    const res = await fetch(url, opts).catch(e => (last = e, null));
-    if (!res) continue;
-    if (res.status !== 429) return res;
-    const retryAfter = Number(res.headers.get('retry-after')) || 0;
-    const wait = retryAfter ? retryAfter * 1000 : (600 + Math.random() * 600);
-    await new Promise(r => setTimeout(r, wait));
-  }
-  throw last || new Error('Rate limited by OSRS Wiki');
-}
-
-// Session memo to avoid refetching
-const WIKI_MEMO = new Map();          // filename-level memo: `ii|width|name` -> { fileUrl, thumbUrl }
-const WIKI_QUERY_MEMO = new Map();    // query-level memo: `ai|prefix|width` -> [{ name, fileUrl, thumbUrl }]
-
-// Resolve file metadata (thumb + original) for many files in one POST
-async function wikiGetImageInfo(fileNames, width = 192) {
-  const results = [];
-  for (let i = 0; i < fileNames.length; i += 40) {
-    const chunk = fileNames.slice(i, i + 40);
-    const toFetch = [];
-    const cached = [];
-
-    for (const name of chunk) {
-      const k = `ii|${width}|${name}`;
-      const hit = WIKI_MEMO.get(k);
-      if (hit) cached.push({ name, ...hit });
-      else toFetch.push(name);
+      const blob = new Blob([text], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
     }
 
-    if (toFetch.length) {
-      const body = new URLSearchParams({
+    // Small backoff for 429s (retry once)
+    async function backoffFetch(url, opts = {}, tries = 2) {
+      let last;
+      for (let i = 0; i < tries; i++) {
+        const res = await fetch(url, opts).catch(e => (last = e, null));
+        if (!res) continue;
+        if (res.status !== 429) return res;
+        const retryAfter = Number(res.headers.get('retry-after')) || 0;
+        const wait = retryAfter ? retryAfter * 1000 : (600 + Math.random() * 600);
+        await new Promise(r => setTimeout(r, wait));
+      }
+      throw last || new Error('Rate limited by OSRS Wiki');
+    }
+
+    // Session memo to avoid refetching
+    const WIKI_MEMO = new Map();          // filename-level memo: `ii|width|name` -> { fileUrl, thumbUrl }
+    const WIKI_QUERY_MEMO = new Map();    // query-level memo: `ai|prefix|width` -> [{ name, fileUrl, thumbUrl }]
+
+    // Resolve file metadata (thumb + original) for many files in one POST
+    async function wikiGetImageInfo(fileNames, width = 192) {
+      const results = [];
+      for (let i = 0; i < fileNames.length; i += 40) {
+        const chunk = fileNames.slice(i, i + 40);
+        const toFetch = [];
+        const cached = [];
+
+        for (const name of chunk) {
+          const k = `ii|${width}|${name}`;
+          const hit = WIKI_MEMO.get(k);
+          if (hit) cached.push({ name, ...hit });
+          else toFetch.push(name);
+        }
+
+        if (toFetch.length) {
+          const body = new URLSearchParams({
+            action: 'query',
+            format: 'json',
+            origin: '*',
+            prop: 'imageinfo',
+            iiprop: 'url',
+            iiurlwidth: String(width),
+            maxage: '86400',
+            smaxage: '86400',
+            titles: toFetch.map(n => `File:${n}`).join('|'),
+          });
+
+          const res = await backoffFetch(WIKI_API, { method: 'POST', body });
+          const json = await res.json();
+          const pages = json?.query?.pages || {};
+          for (const p of Object.values(pages)) {
+            const title = (p.title || '').replace(/^File:/, '');
+            const ii = (p.imageinfo && p.imageinfo[0]) || {};
+            const rec = { name: title, fileUrl: ii.url || '', thumbUrl: ii.thumburl || ii.url || '' };
+            results.push(rec);
+            if (title) WIKI_MEMO.set(`ii|${width}|${title}`, { fileUrl: rec.fileUrl, thumbUrl: rec.thumbUrl });
+          }
+        }
+
+        results.push(...cached);
+      }
+      return results;
+    }
+
+    // Search by case-insensitive file title prefix, then enrich with imageinfo (thumbs at 192px)
+    async function wikiSearchFiles(prefix, limit = 40, thumbWidth = 192) {
+      const q = (prefix || '').trim();
+      if (q.length < 2) return [];
+
+      const memoKey = `ps|${q}|${thumbWidth}`;
+      if (WIKI_QUERY_MEMO.has(memoKey)) return WIKI_QUERY_MEMO.get(memoKey);
+
+      // 1) Primary: prefixsearch on File namespace (6) — case-insensitive title prefix
+      const qsPS = new URLSearchParams({
         action: 'query',
         format: 'json',
         origin: '*',
-        prop: 'imageinfo',
-        iiprop: 'url',
-        iiurlwidth: String(width),
+        list: 'prefixsearch',
+        pssearch: q,
+        psnamespace: '6',                // File:
+        pslimit: String(Math.min(limit, 50)),
         maxage: '86400',
         smaxage: '86400',
-        titles: toFetch.map(n => `File:${n}`).join('|'),
       });
 
-      const res = await backoffFetch(WIKI_API, { method: 'POST', body });
-      const json = await res.json();
-      const pages = json?.query?.pages || {};
-      for (const p of Object.values(pages)) {
-        const title = (p.title || '').replace(/^File:/, '');
-        const ii = (p.imageinfo && p.imageinfo[0]) || {};
-        const rec = { name: title, fileUrl: ii.url || '', thumbUrl: ii.thumburl || ii.url || '' };
-        results.push(rec);
-        if (title) WIKI_MEMO.set(`ii|${width}|${title}`, { fileUrl: rec.fileUrl, thumbUrl: rec.thumbUrl });
+      let names = [];
+      try {
+        const res = await backoffFetch(`${WIKI_API}?${qsPS.toString()}`);
+        const json = await res.json().catch(() => ({}));
+        names = (json?.query?.prefixsearch || [])
+          .map(p => (p.title || '').replace(/^File:/, ''))
+          .filter(Boolean);
+      } catch { }
+
+      // 2) Fallback: allimages (helps if prefixsearch returns nothing for some rare inputs)
+      if (!names.length) {
+        const qsAI = new URLSearchParams({
+          action: 'query',
+          format: 'json',
+          origin: '*',
+          list: 'allimages',
+          aiprefix: q[0].toUpperCase() + q.slice(1),  // nudge case
+          ailimit: String(Math.min(limit, 50)),
+          maxage: '86400',
+          smaxage: '86400',
+        });
+        try {
+          const resAI = await backoffFetch(`${WIKI_API}?${qsAI.toString()}`);
+          const jsonAI = await resAI.json().catch(() => ({}));
+          names = (jsonAI?.query?.allimages || [])
+            .map(img => img.name || (img.title || '').replace(/^File:/, ''))
+            .filter(Boolean);
+        } catch { }
       }
+
+      const info = names.length ? await wikiGetImageInfo(names, thumbWidth) : [];
+      WIKI_QUERY_MEMO.set(memoKey, info);
+      return info; // [{ name, fileUrl, thumbUrl }]
     }
 
-    results.push(...cached);
-  }
-  return results;
-}
-
-// Search by case-insensitive file title prefix, then enrich with imageinfo (thumbs at 192px)
-async function wikiSearchFiles(prefix, limit = 40, thumbWidth = 192) {
-  const q = (prefix || '').trim();
-  if (q.length < 2) return [];
-
-  const memoKey = `ps|${q}|${thumbWidth}`;
-  if (WIKI_QUERY_MEMO.has(memoKey)) return WIKI_QUERY_MEMO.get(memoKey);
-
-  // 1) Primary: prefixsearch on File namespace (6) — case-insensitive title prefix
-  const qsPS = new URLSearchParams({
-    action: 'query',
-    format: 'json',
-    origin: '*',
-    list: 'prefixsearch',
-    pssearch: q,
-    psnamespace: '6',                // File:
-    pslimit: String(Math.min(limit, 50)),
-    maxage: '86400',
-    smaxage: '86400',
-  });
-
-  let names = [];
-  try {
-    const res = await backoffFetch(`${WIKI_API}?${qsPS.toString()}`);
-    const json = await res.json().catch(() => ({}));
-    names = (json?.query?.prefixsearch || [])
-      .map(p => (p.title || '').replace(/^File:/, ''))
-      .filter(Boolean);
-  } catch {}
-
-  // 2) Fallback: allimages (helps if prefixsearch returns nothing for some rare inputs)
-  if (!names.length) {
-    const qsAI = new URLSearchParams({
-      action: 'query',
-      format: 'json',
-      origin: '*',
-      list: 'allimages',
-      aiprefix: q[0].toUpperCase() + q.slice(1),  // nudge case
-      ailimit: String(Math.min(limit, 50)),
-      maxage: '86400',
-      smaxage: '86400',
-    });
-    try {
-      const resAI = await backoffFetch(`${WIKI_API}?${qsAI.toString()}`);
-      const jsonAI = await resAI.json().catch(() => ({}));
-      names = (jsonAI?.query?.allimages || [])
-        .map(img => img.name || (img.title || '').replace(/^File:/, ''))
-        .filter(Boolean);
-    } catch {}
-  }
-
-  const info = names.length ? await wikiGetImageInfo(names, thumbWidth) : [];
-  WIKI_QUERY_MEMO.set(memoKey, info);
-  return info; // [{ name, fileUrl, thumbUrl }]
-}
+    const loadRecentEntry = (entry) => {
+      if (!entry || !Array.isArray(entry.tiles)) return;
+      const norm = normalizeImportedTiles(entry.tiles);
+      setTiles(norm);
+      setSelectedId(norm[0]?.id || null);
+      try { localStorage.setItem('tt-editor-tiles', JSON.stringify(norm)); } catch { }
+    };
 
     function nanoid(size = 8) {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -749,6 +757,52 @@ async function wikiSearchFiles(prefix, limit = 40, thumbWidth = 192) {
       tiles.sort((a, b) => a.tileNumber - b.tileNumber);
       tiles.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
       return tiles;
+    }
+
+    // ===== Recents storage (localStorage) =====
+    const RECENTS_KEY = 'tt-recent-boards-v1';
+    const MAX_RECENTS = 5;
+
+    // Signature for dedupe (ignores tileNumber/id churn)
+    function tilesSignature(tiles) {
+      try {
+        return JSON.stringify(
+          tiles.map(t => ({
+            name: t.name || '',
+            desc: t.desc || '',
+            iconFile: t.iconFile || '',
+            effect: t.effect?.kind || 'none',
+            amount: t.effect?.amount ?? null,
+            index: t.effect?.index ?? null
+          }))
+        );
+      } catch { return ''; }
+    }
+
+    function loadRecents() {
+      try {
+        const v = JSON.parse(localStorage.getItem(RECENTS_KEY) || '[]');
+        return Array.isArray(v) ? v : [];
+      } catch { return []; }
+    }
+
+    function saveRecents(list) {
+      try { localStorage.setItem(RECENTS_KEY, JSON.stringify(list.slice(0, MAX_RECENTS))); } catch { }
+    }
+
+    // Takes tiles, normalizes ids/tileNumbers, saves as newest, dedupes by signature
+    function pushRecent(tiles) {
+      const norm = normalizeImportedTiles((tiles || []).map(t => ({ ...t })));
+      const sig = tilesSignature(norm);
+      const current = loadRecents();
+
+      // Remove any existing entry with same signature
+      const filtered = current.filter(e => tilesSignature(e.tiles) !== sig);
+
+      const entry = { id: nanoid(6), ts: Date.now(), tiles: norm };
+      const next = [entry, ...filtered].slice(0, MAX_RECENTS);
+      saveRecents(next);
+      return next;
     }
 
     // Scale the percent of effected tiles by board size
@@ -1008,103 +1062,103 @@ async function wikiSearchFiles(prefix, limit = 40, thumbWidth = 192) {
       );
     }
 
-function EditorPanel({ tile, setTile, onDuplicate, onDelete }) {
-  const { useState } = React;
-  const [openPicker, setOpenPicker] = useState(false);
+    function EditorPanel({ tile, setTile, onDuplicate, onDelete }) {
+      const { useState } = React;
+      const [openPicker, setOpenPicker] = useState(false);
 
-  if (!tile) {
-    return React.createElement('div', { className: 'text-slate-500' }, 'Select a tile to edit.');
-  }
+      if (!tile) {
+        return React.createElement('div', { className: 'text-slate-500' }, 'Select a tile to edit.');
+      }
 
-  const isStart = String(tile.id) === '1';
+      const isStart = String(tile.id) === '1';
 
-  if (isStart) {
-    // START tile: fixed, no icon picker here
-    return React.createElement('div', { className: 'space-y-3' },
-      React.createElement('div', { className: 'text-sm text-emerald-700 font-medium' }, 'START tile (fixed)'),
-      React.createElement('p', { className: 'text-xs text-slate-600' }, 'This tile is fixed, cannot be dragged, and cannot have a name or effect.'),
-      React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-        React.createElement('div', null,
-          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'ID'),
-          React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.id, disabled: true, readOnly: true })
+      if (isStart) {
+        // START tile: fixed, no icon picker here
+        return React.createElement('div', { className: 'space-y-3' },
+          React.createElement('div', { className: 'text-sm text-emerald-700 font-medium' }, 'START tile (fixed)'),
+          React.createElement('p', { className: 'text-xs text-slate-600' }, 'This tile is fixed, cannot be dragged, and cannot have a name or effect.'),
+          React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'ID'),
+              React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.id, disabled: true, readOnly: true })
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
+              React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.tileNumber, disabled: true, readOnly: true })
+            )
+          )
+        );
+      }
+
+      const update = (patch) => setTile({ ...tile, ...patch });
+
+      return React.createElement('div', { className: 'space-y-4' },
+        React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
+          React.createElement('div', null,
+            React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'ID'),
+            React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.id, disabled: true, readOnly: true })
+          ),
+          React.createElement('div', null,
+            React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
+            React.createElement('input', {
+              className: 'w-full rounded-lg border-slate-300',
+              type: 'number',
+              value: tile.tileNumber,
+              onChange: e => update({ tileNumber: Number.isFinite(Number(e.target.value)) ? Number(e.target.value) : tile.tileNumber })
+            })
+          )
         ),
+
         React.createElement('div', null,
-          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
-          React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.tileNumber, disabled: true, readOnly: true })
-        )
-      )
-    );
-  }
+          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Name'),
+          React.createElement('input', { className: 'w-full rounded-lg border-slate-300', value: tile.name, onChange: e => update({ name: e.target.value }) })
+        ),
 
-  const update = (patch) => setTile({ ...tile, ...patch });
+        React.createElement('div', null,
+          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Description'),
+          React.createElement('textarea', { className: 'w-full rounded-lg border-slate-300', rows: 4, value: tile.desc, onChange: e => update({ desc: e.target.value }) })
+        ),
 
-  return React.createElement('div', { className: 'space-y-4' },
-    React.createElement('div', { className: 'grid grid-cols-2 gap-3' },
-      React.createElement('div', null,
-        React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'ID'),
-        React.createElement('input', { className: 'w-full rounded-lg border-slate-300 bg-slate-100 text-slate-500', value: tile.id, disabled: true, readOnly: true })
-      ),
-      React.createElement('div', null,
-        React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Tile Number'),
-        React.createElement('input', {
-          className: 'w-full rounded-lg border-slate-300',
-          type: 'number',
-          value: tile.tileNumber,
-          onChange: e => update({ tileNumber: Number.isFinite(Number(e.target.value)) ? Number(e.target.value) : tile.tileNumber })
+        // ICON URL + PICKER (non-start tiles only)
+        React.createElement('div', null,
+          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Icon URL (iconFile)'),
+          React.createElement('input', {
+            className: 'w-full rounded-lg border-slate-300',
+            placeholder: 'https://… or use “Pick from OSRS Wiki”',
+            value: tile.iconFile,
+            onChange: e => update({ iconFile: e.target.value })
+          }),
+          React.createElement('div', { className: 'flex gap-2 mt-2' },
+            React.createElement('button', {
+              className: 'btn-stone',
+              onClick: () => setOpenPicker(true)
+            }, 'Pick from OSRS Wiki'),
+            React.createElement('button', {
+              className: 'btn-stone',
+              onClick: () => update({ iconFile: '' })
+            }, 'Clear')
+          )
+        ),
+
+        // Effect editor
+        React.createElement('div', null,
+          React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-2' }, 'Effect'),
+          React.createElement(EffectEditor, { tile, onChange: (patch) => update(patch) })
+        ),
+
+        React.createElement('div', { className: 'flex gap-2' },
+          React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700', onClick: onDuplicate }, 'Duplicate'),
+          React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700', onClick: onDelete }, 'Delete')
+        ),
+
+        // Modal appears only for non-start tiles
+        openPicker && React.createElement(IconPicker, {
+          initialQuery: '',
+          onPick: (url) => update({ iconFile: url }),
+          onClose: () => setOpenPicker(false)
         })
-      )
-    ),
-
-    React.createElement('div', null,
-      React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Name'),
-      React.createElement('input', { className: 'w-full rounded-lg border-slate-300', value: tile.name, onChange: e => update({ name: e.target.value }) })
-    ),
-
-    React.createElement('div', null,
-      React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Description'),
-      React.createElement('textarea', { className: 'w-full rounded-lg border-slate-300', rows: 4, value: tile.desc, onChange: e => update({ desc: e.target.value }) })
-    ),
-
-    // ICON URL + PICKER (non-start tiles only)
-    React.createElement('div', null,
-      React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-1' }, 'Icon URL (iconFile)'),
-      React.createElement('input', {
-        className: 'w-full rounded-lg border-slate-300',
-        placeholder: 'https://… or use “Pick from OSRS Wiki”',
-        value: tile.iconFile,
-        onChange: e => update({ iconFile: e.target.value })
-      }),
-      React.createElement('div', { className: 'flex gap-2 mt-2' },
-        React.createElement('button', {
-          className: 'btn-stone',
-          onClick: () => setOpenPicker(true)
-        }, 'Pick from OSRS Wiki'),
-        React.createElement('button', {
-          className: 'btn-stone',
-          onClick: () => update({ iconFile: '' })
-        }, 'Clear')
-      )
-    ),
-
-    // Effect editor
-    React.createElement('div', null,
-      React.createElement('label', { className: 'block text-xs font-medium text-slate-600 mb-2' }, 'Effect'),
-      React.createElement(EffectEditor, { tile, onChange: (patch) => update(patch) })
-    ),
-
-    React.createElement('div', { className: 'flex gap-2' },
-      React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700', onClick: onDuplicate }, 'Duplicate'),
-      React.createElement('button', { className: 'px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700', onClick: onDelete }, 'Delete')
-    ),
-
-    // Modal appears only for non-start tiles
-openPicker && React.createElement(IconPicker, {
-  initialQuery: '',
-  onPick: (url) => update({ iconFile: url }),
-  onClose: () => setOpenPicker(false)
-})
-  );
-}
+      );
+    }
 
 
     function EffectBuilderPanel() {
@@ -1182,95 +1236,134 @@ openPicker && React.createElement(IconPicker, {
       );
     }
 
-function IconPicker({ initialQuery = '', onPick, onClose }) {
-  const { useState } = React;
-  const [q, setQ] = useState(initialQuery || '');
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
+    function IconPicker({ initialQuery = '', onPick, onClose }) {
+      const { useState } = React;
+      const [q, setQ] = useState(initialQuery || '');
+      const [items, setItems] = useState([]);
+      const [loading, setLoading] = useState(false);
+      const [err, setErr] = useState('');
 
-  const QUICK = ['Zulrah', 'Vorkath', 'Barrows', 'Slayer', 'Dragon', 'Herblore', 'Agility', 'Fishing', 'Runecraft'];
+      const QUICK = ['Zulrah', 'Vorkath', 'Barrows', 'Slayer', 'Dragon', 'Herblore', 'Agility', 'Fishing', 'Runecraft'];
 
-  const run = async (query) => {
-    const term = (query || '').trim();
-    if (term.length < 2) { setItems([]); setErr(''); return; }  // avoid spammy calls
-    setLoading(true); setErr('');
-    try {
-      const list = await wikiSearchFiles(term, 40, 192);
-      setItems(list);
-    } catch {
-      setErr('Wiki rate-limited or unreachable. Try again in a moment.');
-    } finally {
-      setLoading(false);
-    }
-  };
+      const run = async (query) => {
+        const term = (query || '').trim();
+        if (term.length < 2) { setItems([]); setErr(''); return; }  // avoid spammy calls
+        setLoading(true); setErr('');
+        try {
+          const list = await wikiSearchFiles(term, 40, 192);
+          setItems(list);
+        } catch {
+          setErr('Wiki rate-limited or unreachable. Try again in a moment.');
+        } finally {
+          setLoading(false);
+        }
+      };
 
-return React.createElement('div', { className: 'fixed inset-0 z-50 grid place-items-center bg-black/50 p-4' },
-  React.createElement('div', { className: 'w-full max-w-3xl panel-medieval p-4' },
+      return React.createElement('div', { className: 'fixed inset-0 z-50 grid place-items-center bg-black/50 p-4' },
+        React.createElement('div', { className: 'w-full max-w-3xl panel-medieval p-4' },
 
-    // Header row: input + Search + Close (right-aligned)
-    React.createElement('div', { className: 'mb-3 flex items-center gap-2' },
-      React.createElement('input', {
-        className: 'w-full rounded-lg border-slate-300',
-        placeholder: 'Search file name prefix (e.g., "Zulrah", "Dragon", "Herblore")',
-        value: q,
-        onChange: e => setQ(e.target.value),
-        onKeyDown: (e) => {
-          if (e.key === 'Enter' && !loading && q.trim().length >= 2) {
-            e.preventDefault(); run(q);
-          }
-        },
-        autoFocus: true
-      }),
-      React.createElement('button', {
-        className: 'btn-bronze',
-        disabled: (q.trim().length < 2) || loading,
-        onClick: () => run(q)
-      }, loading ? 'Searching…' : 'Search'),
-      React.createElement('button', {
-        className: 'btn-stone ml-auto',
-        onClick: onClose
-      }, 'Close')
-    ),
+          // Header row: input + Search + Close (right-aligned)
+          React.createElement('div', { className: 'mb-3 flex items-center gap-2' },
+            React.createElement('input', {
+              className: 'w-full rounded-lg border-slate-300',
+              placeholder: 'Search file name prefix (e.g., "Zulrah", "Dragon", "Herblore")',
+              value: q,
+              onChange: e => setQ(e.target.value),
+              onKeyDown: (e) => {
+                if (e.key === 'Enter' && !loading && q.trim().length >= 2) {
+                  e.preventDefault(); run(q);
+                }
+              },
+              autoFocus: true
+            }),
+            React.createElement('button', {
+              className: 'btn-bronze',
+              disabled: (q.trim().length < 2) || loading,
+              onClick: () => run(q)
+            }, loading ? 'Searching…' : 'Search'),
+            React.createElement('button', {
+              className: 'btn-stone ml-auto',
+              onClick: onClose
+            }, 'Close')
+          ),
 
-    // Quick chips
-    React.createElement('div', { className: 'flex flex-wrap gap-2 mb-3' },
-      QUICK.map(term =>
-        React.createElement('button', {
-          key: term,
-          className: 'btn-stone',
-          onClick: () => { setQ(term); run(term); }
-        }, term)
-      )
-    ),
+          // Quick chips
+          React.createElement('div', { className: 'flex flex-wrap gap-2 mb-3' },
+            QUICK.map(term =>
+              React.createElement('button', {
+                key: term,
+                className: 'btn-stone',
+                onClick: () => { setQ(term); run(term); }
+              }, term)
+            )
+          ),
 
-    err && React.createElement('div', { className: 'text-sm text-rose-600' }, err),
+          err && React.createElement('div', { className: 'text-sm text-rose-600' }, err),
 
-    // Results grid (unchanged except it applies on click)
-    React.createElement('div', { className: 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[60vh] overflow-auto' },
-      items.map(f =>
-        React.createElement('button', {
-          key: f.name,
-          className: 'rounded-lg border border-slate-200 bg-white/70 hover:shadow soft p-2 flex flex-col items-center gap-2',
-          onClick: () => { onPick?.(f.thumbUrl || f.fileUrl, f); onClose?.(); }
-        },
-          React.createElement('img', {
-            src: f.thumbUrl || f.fileUrl,
-            alt: f.name,
-            className: 'w-20 h-20 object-contain',
-            onError: (e) => { e.currentTarget.style.visibility = 'hidden'; }
-          }),
-          React.createElement('div', { className: 'text-[10px] text-slate-700 text-center break-all' }, f.name)
+          // Results grid (unchanged except it applies on click)
+          React.createElement('div', { className: 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[60vh] overflow-auto' },
+            items.map(f =>
+              React.createElement('button', {
+                key: f.name,
+                className: 'rounded-lg border border-slate-200 bg-white/70 hover:shadow soft p-2 flex flex-col items-center gap-2',
+                onClick: () => { onPick?.(f.thumbUrl || f.fileUrl, f); onClose?.(); }
+              },
+                React.createElement('img', {
+                  src: f.thumbUrl || f.fileUrl,
+                  alt: f.name,
+                  className: 'w-20 h-20 object-contain',
+                  onError: (e) => { e.currentTarget.style.visibility = 'hidden'; }
+                }),
+                React.createElement('div', { className: 'text-[10px] text-slate-700 text-center break-all' }, f.name)
+              )
+            )
+          )
         )
-      )
-    )
-  )
-);
-}
+      );
+    }
 
-    function Toolbar({ onNew, onClear, onImport, onExport, onRandom, count }) {
-      const fileRef = useRef(null);
+    function RecentBoardsPanel({ recents, onLoad, onClear }) {
+      const { createElement: h } = React;
 
+      const fmt = (ts) => {
+        try {
+          const d = new Date(ts);
+          return d.toLocaleString([], { hour: '2-digit', minute: '2-digit' });
+        } catch { return ''; }
+      };
+
+      return h('div', { className: 'panel-medieval p-4' },
+        h('div', { className: 'flex items-center gap-2' },
+          h('h2', { className: 'heading-medieval text-sm' }, 'Recent Boards'),
+          recents.length
+            ? h('button', { className: 'btn-stone ml-auto text-xs px-2 py-1', onClick: onClear }, 'Clear')
+            : null
+        ),
+        h('div', { className: 'mt-3 flex flex-wrap gap-3 items-center' },
+          recents.length
+            ? recents.map((r, i) =>
+              h('button', {
+                key: r.id,
+                title: `Load board • ${r.tiles.length} tiles • ${new Date(r.ts).toLocaleString()}`,
+                onClick: () => onLoad(r),
+                className: [
+                  'relative w-14 h-14 rounded-full',
+                  'border-2 border-[var(--bronze-dark)]',
+                  'bg-[url("assets/images/parchment.png")] bg-cover bg-center',
+                  'shadow soft hover:shadow-lg focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/60'
+                ].join(' ')
+              },
+                h('div', { className: 'grid place-items-center w-full h-full text-[10px] font-semibold text-amber-900' }, `${r.tiles.length}x`),
+                h('span', { className: 'absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-slate-700 whitespace-nowrap' }, i === 0 ? 'Latest' : fmt(r.ts))
+              )
+            )
+            : h('div', { className: 'text-xs text-slate-600' }, 'No recents yet. Import, Export, Random Board, or Save Snapshot to create one.')
+        )
+      );
+    }
+
+    function Toolbar({ onNew, onClear, onImport, onExport, onRandom, onSaveSnapshot, count }) {
+      const fileRef = React.useRef(null);
       const triggerImport = () => fileRef.current && fileRef.current.click();
 
       const onFile = (e) => {
@@ -1280,21 +1373,21 @@ return React.createElement('div', { className: 'fixed inset-0 z-50 grid place-it
         reader.onload = () => onImport(String(reader.result || ''));
         reader.readAsText(f);
         e.target.value = '';
-      }
+      };
 
-      return (
-        React.createElement('div', { className: 'flex flex-wrap items-center gap-2' },
-          React.createElement('button', { className: 'btn-bronze', onClick: onNew }, 'Add Tile'),
-          React.createElement('button', { className: 'btn-bronze', onClick: onClear }, 'Clear'),
-          React.createElement('button', { className: 'btn-bronze', onClick: onRandom, title: 'Shuffle tiles and apply randomized effects' }, 'Random Board'),
-          React.createElement('button', { className: 'btn-bronze', onClick: triggerImport }, 'Import JSON'),
-          React.createElement('button', { className: 'btn-bronze', onClick: onExport }, 'Export JSON'),
+      return React.createElement('div', { className: 'flex flex-wrap items-center gap-2' },
+        React.createElement('button', { className: 'btn-bronze', onClick: onNew }, 'Add Tile'),
+        React.createElement('button', { className: 'btn-bronze', onClick: onClear }, 'Clear'),
+        React.createElement('button', { className: 'btn-bronze', onClick: onRandom, title: 'Shuffle tiles and apply randomized effects' }, 'Random Board'),
+        React.createElement('button', { className: 'btn-bronze', onClick: triggerImport }, 'Import JSON'),
+        React.createElement('button', { className: 'btn-bronze', onClick: onExport }, 'Export JSON'),
+        React.createElement('button', { className: 'btn-stone', onClick: onSaveSnapshot, title: 'Save current board to Recents' }, 'Save Snapshot'),
 
-          React.createElement('input', { ref: fileRef, type: 'file', accept: '.json,application/json', className: 'hidden', onChange: onFile }),
-          React.createElement('div', { className: 'ml-auto text-sm text-slate-600' }, `${count} tile${count === 1 ? '' : 's'}`)
-        )
+        React.createElement('input', { ref: fileRef, type: 'file', accept: '.json,application/json', className: 'hidden', onChange: onFile }),
+        React.createElement('div', { className: 'ml-auto text-sm text-slate-600' }, `${count} tile${count === 1 ? '' : 's'}`)
       );
     }
+
     function buildSnakePositions(count, ROW_LEN = 15) {
       const positions = [];
       let x = 0, y = 0, dir = 1;
@@ -1476,7 +1569,7 @@ return React.createElement('div', { className: 'fixed inset-0 z-50 grid place-it
       const cols = 15;
       const snake = true;
       const [selectedId, setSelectedId] = useState(tiles[0]?.id || null);
-
+      const [recents, setRecents] = useState(() => loadRecents());
       useEffect(() => { localStorage.setItem('tt-editor-tiles', JSON.stringify(tiles)); }, [tiles]);
       useEffect(() => { localStorage.setItem('tt-editor-snake', snake ? '1' : '0'); }, [snake]);
 
@@ -1497,6 +1590,7 @@ return React.createElement('div', { className: 'fixed inset-0 z-50 grid place-it
 
       const randomizeBoard = () => {
         setTiles(prev => {
+          setTimeout(() => setRecents(pushRecent(next)), 0);
           if (!Array.isArray(prev) || prev.length <= 1) return prev;
 
           // Copy and split: keep START (index 0) fixed
@@ -1569,6 +1663,7 @@ return React.createElement('div', { className: 'fixed inset-0 z-50 grid place-it
           }
           const norm = normalizeImportedTiles(extracted);
           setTiles(norm);
+          setRecents(pushRecent(norm));
           setSelectedId(norm[0]?.id || null);
         } catch (e) {
           alert('Invalid JSON: ' + e.message);
@@ -1597,6 +1692,7 @@ return React.createElement('div', { className: 'fixed inset-0 z-50 grid place-it
           return obj;
         });
         const text = JSON.stringify(out, null, 2);
+        setRecents(pushRecent(tiles));
         download('board.json', text);
       };
 
@@ -1641,10 +1737,19 @@ return React.createElement('div', { className: 'fixed inset-0 z-50 grid place-it
               onImport: importJSON,
               onExport: exportJSON,
               onRandom: randomizeBoard,
+              onSaveSnapshot: () => setRecents(pushRecent(tiles)),
               count: tiles.length
             })
           ),
 
+          // Recent Boards pips
+          React.createElement(RecentBoardsPanel, {
+            recents,
+            onLoad: loadRecentEntry,
+            onClear: () => { saveRecents([]); setRecents([]); }
+          }),
+
+          // Board settings
           React.createElement('div', { className: 'panel-medieval p-4' },
             React.createElement(BoardSettings, { count: tiles.length })
           ),
