@@ -1,0 +1,12 @@
+{
+  "boards": [
+    {
+      "id": "example",
+      "ts": 1730332800000,
+      "tiles": [
+        { "id": "1", "tileNumber": 1, "name": "Tile 1", "desc": "", "iconFile": "", "effect": { "kind": "none" }, "meta": { "presetId": "none", "opts": {}, "attached": false } },
+        { "id": "2", "tileNumber": 2, "name": "Tile 2", "desc": "", "iconFile": "", "effect": { "kind": "move_forward", "trigger": "on_next_roll", "amount": 1 }, "meta": { "presetId": "move_forward", "opts": { "amount": 1 }, "attached": true } }
+      ]
+    }
+  ]
+}
