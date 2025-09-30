@@ -590,14 +590,6 @@
       return info; // [{ name, fileUrl, thumbUrl }]
     }
 
-    const loadRecentEntry = (entry) => {
-      if (!entry || !Array.isArray(entry.tiles)) return;
-      const norm = normalizeImportedTiles(entry.tiles);
-      setTiles(norm);
-      setSelectedId(norm[0]?.id || null);
-      try { localStorage.setItem('tt-editor-tiles', JSON.stringify(norm)); } catch { }
-    };
-
     function nanoid(size = 8) {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
       let s = '';
@@ -1322,38 +1314,77 @@
       );
     }
 
-    function RecentBoardsPanel({ recents, onLoad, onClear }) {
-      const { createElement: h } = React;
+    // Mini SVG preview of a board (fits in a pip)
+    function MiniBoardSVG({ tiles, size = 56 }) {
+      const cols = 15;
+      const positions = buildSnakePositions(tiles.length, cols);
+      const rows = positions.reduce((m, p) => Math.max(m, p.y), 0) + 1;
+
+      const pad = 1.2;
+      const cell = Math.max(1, Math.floor(Math.min((size - 2 * pad) / cols, (size - 2 * pad) / rows)));
+      const W = cell * cols + 2 * pad;
+      const H = cell * rows + 2 * pad;
+
+      const rects = positions.map((p, i) => {
+        const x = pad + p.x * cell;
+        const y = pad + p.y * cell;
+        const isStart = i === 0;
+        const isFinish = i === tiles.length - 1;
+        const hasEff = !!(tiles[i]?.effect && tiles[i].effect.kind && tiles[i].effect.kind !== 'none');
+
+        const fill = isStart ? '#16a34a' : isFinish ? '#d97706' : '#f3e7ca';
+        const stroke = '#8a531e';
+        return React.createElement('g', { key: i },
+          React.createElement('rect', { x, y, width: cell - 0.6, height: cell - 0.6, rx: Math.max(1, cell * 0.15), fill, stroke, strokeWidth: 0.6 }),
+          hasEff ? React.createElement('circle', { cx: x + (cell * 0.8), cy: y + (cell * 0.8), r: Math.max(0.9, cell * 0.13), fill: '#0ea5e9' }) : null
+        );
+      });
+
+      return React.createElement('svg', { width: size, height: size, viewBox: `0 0 ${W} ${H}`, 'aria-hidden': true }, rects);
+    }
+
+    function PublicBoardsPanel({ list, onLoad, onRefresh }) {
+      return React.createElement('div', { className: 'panel-medieval p-4' },
+        React.createElement('div', { className: 'flex items-center gap-2' },
+          React.createElement('h2', { className: 'heading-medieval text-sm' }, 'Community Boards'),
+          React.createElement('button', { className: 'btn-stone ml-auto text-xs px-2 py-1', onClick: onRefresh }, 'Refresh')
+        ),
+        React.createElement(RecentBoardsPanel, {
+          recents: list,
+          onLoad,
+          onClear: () => { },
+          title: '' // hide nested title
+        })
+      );
+    }
+
+    function RecentBoardsPanel({ recents, onLoad, onClear, title = 'Recent Boards' }) {
+      const h = React.createElement;
 
       const fmt = (ts) => {
-        try {
-          const d = new Date(ts);
-          return d.toLocaleString([], { hour: '2-digit', minute: '2-digit' });
-        } catch { return ''; }
+        try { return new Date(ts).toLocaleString([], { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+        catch { return ''; }
       };
 
       return h('div', { className: 'panel-medieval p-4' },
         h('div', { className: 'flex items-center gap-2' },
-          h('h2', { className: 'heading-medieval text-sm' }, 'Recent Boards'),
-          recents.length
-            ? h('button', { className: 'btn-stone ml-auto text-xs px-2 py-1', onClick: onClear }, 'Clear')
-            : null
+          h('h2', { className: 'heading-medieval text-sm' }, title),
+          recents?.length ? h('button', { className: 'btn-stone ml-auto text-xs px-2 py-1', onClick: onClear }, 'Clear') : null
         ),
-        h('div', { className: 'mt-3 flex flex-wrap gap-3 items-center' },
-          recents.length
+        h('div', { className: 'mt-3 flex flex-wrap gap-4 items-start' },
+          (recents && recents.length)
             ? recents.map((r, i) =>
               h('button', {
-                key: r.id,
-                title: `Load board • ${r.tiles.length} tiles • ${new Date(r.ts).toLocaleString()}`,
+                key: r.id || i,
                 onClick: () => onLoad(r),
                 className: [
-                  'relative w-14 h-14 rounded-full',
+                  'relative w-16 h-16 rounded-full',
                   'border-2 border-[var(--bronze-dark)]',
-                  'bg-[url("assets/images/parchment.png")] bg-cover bg-center',
-                  'shadow soft hover:shadow-lg focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/60'
+                  'bg-white/70 backdrop-blur',
+                  'shadow hover:shadow-lg focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-300/60'
                 ].join(' ')
               },
-                h('div', { className: 'grid place-items-center w-full h-full text-[10px] font-semibold text-amber-900' }, `${r.tiles.length}x`),
+                h(MiniBoardSVG, { tiles: r.tiles, size: 56 }),
                 h('span', { className: 'absolute -bottom-5 left-1/2 -translate-x-1/2 text-[10px] text-slate-700 whitespace-nowrap' }, i === 0 ? 'Latest' : fmt(r.ts))
               )
             )
@@ -1361,6 +1392,7 @@
         )
       );
     }
+
 
     function Toolbar({ onNew, onClear, onImport, onExport, onRandom, onSaveSnapshot, count }) {
       const fileRef = React.useRef(null);
@@ -1542,6 +1574,21 @@
     }
 
     function App() {
+
+      const loadRecentEntry = (entry) => {
+        if (!entry || !Array.isArray(entry.tiles)) return;
+        const norm = normalizeImportedTiles(entry.tiles);
+        setTiles(norm);
+        setSelectedId(norm[0]?.id || null);
+        try { localStorage.setItem('tt-editor-tiles', JSON.stringify(norm)); } catch { }
+      };
+      const [publicRecents, setPublicRecents] = useState([]);
+      const fetchPublic = () =>
+        fetch('data/public-boards.json', { cache: 'no-store' })
+          .then(r => r.json())
+          .then(j => setPublicRecents(Array.isArray(j?.boards) ? j.boards.slice(0, 10) : []))
+          .catch(() => { });
+      useEffect(() => { fetchPublic(); }, []);
       const applyEffectToTile = (tileId, eff) => {
         if (String(tileId) === '1') return; // ← ignore START defensively
         setTiles(prev => prev.map(t => {
@@ -1566,10 +1613,10 @@
         } catch { }
         return Array.from({ length: 10 }, (_, i) => makeDefaultTile(i + 1));
       });
+      const [recents, setRecents] = useState(() => loadRecents());
       const cols = 15;
       const snake = true;
       const [selectedId, setSelectedId] = useState(tiles[0]?.id || null);
-      const [recents, setRecents] = useState(() => loadRecents());
       useEffect(() => { localStorage.setItem('tt-editor-tiles', JSON.stringify(tiles)); }, [tiles]);
       useEffect(() => { localStorage.setItem('tt-editor-snake', snake ? '1' : '0'); }, [snake]);
 
@@ -1590,62 +1637,43 @@
 
       const randomizeBoard = () => {
         setTiles(prev => {
-          setTimeout(() => setRecents(pushRecent(next)), 0);
           if (!Array.isArray(prev) || prev.length <= 1) return prev;
 
-          // Copy and split: keep START (index 0) fixed
-          const head = { ...prev[0] };
-          const rest = prev.slice(1).map(t => ({ ...t }));
+          const head = { ...prev[0], effect: { kind: 'none' }, meta: { presetId: 'none', opts: {}, attached: false } };
+          const rest = prev.slice(1).map(t => ({ ...t, effect: { kind: 'none' }, meta: { presetId: 'none', opts: {}, attached: false } }));
 
-          // Shuffle the playable tiles
+          // shuffle
           for (let i = rest.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [rest[i], rest[j]] = [rest[j], rest[i]];
           }
 
-          // Clear effects first
-          for (const t of rest) {
-            t.effect = { kind: 'none' };
-            t.meta = { presetId: 'none', opts: {}, attached: false };
-          }
-
-          // Decide how many tiles to effect
+          // random effects
           const playableCount = rest.length;
           const toAffect = effectTargetCount(playableCount);
-
-          // Choose unique target indices in rest[]
           const picks = new Set();
-          while (picks.size < toAffect) {
-            picks.add(Math.floor(Math.random() * playableCount)); // 0..playableCount-1
-          }
-
-          // Pool of effect kinds (exclude 'none')
+          while (picks.size < toAffect) picks.add(Math.floor(Math.random() * playableCount));
           const kinds = EFFECTS.map(e => e.kind).filter(k => k !== 'none');
-
-          // Apply randomized effects
           for (const idx of picks) {
             const kind = kinds[Math.floor(Math.random() * kinds.length)];
             const eff = buildRandomEffect(kind, playableCount);
             const opts = {};
             if ('amount' in eff) opts.amount = eff.amount;
             if ('index' in eff) opts.index = eff.index;
-
             rest[idx].effect = eff;
             rest[idx].meta = { presetId: eff.kind, opts, attached: true };
           }
 
-          // Ensure START tile is clean
-          head.effect = { kind: 'none' };
-          head.meta = { presetId: 'none', opts: {}, attached: false };
-
           const next = [head, ...rest];
-
-          // Resequence IDs and tileNumbers 1..N
           next.forEach((t, i) => { t.tileNumber = i + 1; t.id = String(i + 1); });
+
+          // save snapshot safely now that `next` exists
+          setRecents(pushRecent(next));
 
           return next;
         });
       };
+
 
       const clearAll = () => {
         if (confirm('Clear all tiles?')) {
@@ -1747,6 +1775,12 @@
             recents,
             onLoad: loadRecentEntry,
             onClear: () => { saveRecents([]); setRecents([]); }
+          }),
+
+          React.createElement(PublicBoardsPanel, {
+            list: publicRecents,
+            onLoad: loadRecentEntry,
+            onRefresh: fetchPublic
           }),
 
           // Board settings
