@@ -8,7 +8,6 @@
 
   <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-
   <script>
     tailwind.config = {
       theme: {
@@ -44,32 +43,33 @@
 
     html, body {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      /* Fallback background if video fails to load */
-      background: #000 url('assets/images/bg.png') center / cover fixed no-repeat;
+      background: #000; /* video is the background now */
       min-height: 100vh;
     }
 
-    /* ===== Background video (HTML5) ===== */
+    /* ===== Fullscreen background video (HTML5) ===== */
     .video-bg {
       position: fixed;
       inset: 0;
-      z-index: -1;
+      z-index: -1;          /* behind everything */
       overflow: hidden;
-      pointer-events: none;
-      background: #000; /* prevents flash of white on load */
+      pointer-events: none; /* don't capture clicks */
+      background: #000;
     }
     .video-bg video {
       position: absolute;
       top: 50%; left: 50%;
-      transform: translate(-50%, -50%) scale(1.08); /* slight scale to hide blur edges */
-      min-width: 100%;
-      min-height: 100%;
-      width: auto;
-      height: auto;
+      transform: translate(-50%, -50%) scale(1.08); /* scale hides blur edges */
+      width: 100vw;
+      height: 100vh;
       object-fit: cover;
-      opacity: 0.5;               /* 50% opacity */
-      filter: blur(6px);          /* blurred background */
+      opacity: 0.5;      /* 50% opacity */
+      filter: blur(6px); /* soft blur */
     }
+    /* Hide any UA controls overlays just in case */
+    .video-bg video::-webkit-media-controls { display: none !important; }
+    .video-bg video::-moz-media-controls { display: none !important; }
+    .video-bg video::-ms-media-controls { display: none !important; }
 
     /* Parchment panel with bronze trim */
     .panel-medieval {
@@ -133,11 +133,21 @@
 </head>
 
 <body class="text-slate-900">
-  <!-- Background video layer (HTML5) -->
+  <!-- Background video layer -->
   <div class="video-bg" aria-hidden="true">
-    <video id="bg-video" autoplay muted loop playsinline preload="auto" poster="assets/images/bg.png">
+    <video
+      id="bg-video"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+      poster="assets/images/bg.png"
+      controlslist="nodownload noplaybackrate noremoteplayback nofullscreen"
+      disablepictureinpicture
+    >
       <source src="assets/YTDown.com_YouTube_Old-School-RuneScape-Official-Varlamore_Media_aZQJ1nJfyIo_001_1080p.mp4" type="video/mp4">
-      <!-- Optional: add a .webm source for better compression if you have it -->
+      <!-- Optional: add a .webm source if you export one for better compression -->
       Your browser does not support the video tag.
     </video>
   </div>
@@ -252,40 +262,43 @@
 
   <!-- Background video segment control -->
   <script>
-    // Keep the same-style variables for segment control
+    // Segment (in seconds)
     const LOOP_START = 1;   // 0:01
     const LOOP_END = 36;    // 0:36
-    const SEGMENT_PADDING = 0.1; // seconds before end to jump back
+    const PAD = 0.08;       // seek slightly before end for smoothness
 
     const vid = document.getElementById('bg-video');
 
-    // Ensure autoplay works (muted) and start at LOOP_START
-    const primeVideo = () => {
+    // Start at LOOP_START as soon as metadata is ready
+    const prime = () => {
       try { vid.muted = true; } catch {}
-      if (Number.isFinite(vid.duration)) {
-        vid.currentTime = Math.min(LOOP_START, Math.max(0, vid.duration - 0.25));
-      } else {
-        // If metadata isn't ready yet, wait for it
-        vid.addEventListener('loadedmetadata', () => {
-          vid.currentTime = Math.min(LOOP_START, Math.max(0, vid.duration - 0.25));
-        }, { once: true });
-      }
-      vid.play().catch(() => {/* ignore autoplay rejections since muted */});
+      const setStart = () => { vid.currentTime = LOOP_START; vid.play().catch(()=>{}); };
+      if (Number.isFinite(vid.duration)) setStart();
+      else vid.addEventListener('loadedmetadata', setStart, { once: true });
     };
+    prime();
 
-    primeVideo();
+    // Prefer precise frame callback when available
+    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+      const step = () => {
+        if (vid.currentTime >= (LOOP_END - PAD)) {
+          vid.currentTime = LOOP_START;
+          vid.play().catch(()=>{});
+        }
+        vid.requestVideoFrameCallback(step);
+      };
+      vid.requestVideoFrameCallback(step);
+    } else {
+      // Fallback: timeupdate
+      vid.addEventListener('timeupdate', () => {
+        if (vid.currentTime >= (LOOP_END - PAD)) {
+          vid.currentTime = LOOP_START;
+          vid.play().catch(()=>{});
+        }
+      });
+    }
 
-    // Guard the segment: jump back to LOOP_START near LOOP_END
-    const onTimeUpdate = () => {
-      if (vid.currentTime >= (LOOP_END - SEGMENT_PADDING)) {
-        vid.currentTime = LOOP_START;
-        // On some browsers, calling play() after seeking keeps it smooth
-        vid.play().catch(()=>{});
-      }
-    };
-    vid.addEventListener('timeupdate', onTimeUpdate);
-
-    // If the video ever ends (shouldn't, but just in case), restart segment
+    // If it somehow ends, restart segment
     vid.addEventListener('ended', () => {
       vid.currentTime = LOOP_START;
       vid.play().catch(()=>{});
