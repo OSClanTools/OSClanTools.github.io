@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nexus of Nodes — Board Editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          boxShadow: {
+            soft: "0 8px 30px rgba(0,0,0,0.08)",
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @font-face {
+      font-family: 'RuneScape-Quill';
+      src: url('assets/font/RuneScape-Quill.otf') format('opentype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    html, body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: url('assets/images/bg.png') center / cover fixed no-repeat;
+      min-height: 100vh;
+    }
+
+    :root {
+      --ink: #2c1a0e;
+      --bronze: #cd7f32;
+      --bronze-dark: #8a531e;
+    }
+
+    .panel-medieval {
+      position: relative;
+      background: url('assets/images/parchment.png') center/cover no-repeat, rgba(250, 245, 230, 0.86);
+      border: 3px solid #cd7f32;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .12), inset 0 0 0 1.5px #8a531e;
+      overflow: hidden;
+    }
+    .panel-medieval::before {
+      content: "";
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse at top, rgba(255,255,255,.25), transparent 60%),
+                  radial-gradient(ellipse at bottom, rgba(0,0,0,.08), transparent 60%);
+      pointer-events: none;
+    }
+    .heading-medieval { font-family: 'RuneScape-Quill', Inter, ui-sans-serif; color: var(--ink); letter-spacing: .3px; text-shadow: 0 1px 0 rgba(0,0,0,.35); }
+
+    .btn-bronze {
+      background: linear-gradient(180deg, #d8a25e, #b0792e);
+      color: #1b1108;
+      border: 1px solid #8a531e;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, .2), inset 0 0 0 1px rgba(255, 255, 255, .25);
+      transition: transform .06s ease, box-shadow .12s ease;
+    }
+    .btn-bronze:hover { transform: translateY(-1px); }
+    .btn-bronze:active { transform: translateY(0); box-shadow: 0 1px 2px rgba(0, 0, 0, .2); }
+
+    .btn-stone {
+      background: linear-gradient(180deg, #e5e7eb, #cbd5e1);
+      color: #111827;
+      border: 1px solid #9ca3af;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: 600;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, .1), inset 0 0 0 1px rgba(255, 255, 255, .25);
+      transition: transform .06s ease, box-shadow .12s ease;
+    }
+    .btn-stone:hover { transform: translateY(-1px); }
+
+    /* Canvas overlay HUD labels */
+    .hud { position: absolute; pointer-events: none; }
+  </style>
+</head>
+
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <!-- React 18 UMD -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+  <script>
+  const { useState, useRef, useMemo, useEffect } = React;
+
+  // ──────────────────────────────────────────────────────────────
+  // Geometry & rendering helpers (flat-top axial; mirrors renderer)
+  // ──────────────────────────────────────────────────────────────
+  const HEX_SIZE = 56; // keep in sync with server renderer
+  const SQRT3 = Math.sqrt(3);
+
+  function axialToPixel(q, r, size=HEX_SIZE) {
+    const x = size * (1.5 * q);
+    const y = size * (SQRT3 * (r + q / 2));
+    return { x, y };
+  }
+
+  // cube helpers for rounding
+  function axialToCube(q, r) { return { x:q, z:r, y:-q-r }; }
+  function cubeToAxial(x,y,z){ return { q:x, r:z }; }
+  function cubeRound(x, y, z){
+    let rx = Math.round(x), ry = Math.round(y), rz = Math.round(z);
+    const x_diff = Math.abs(rx - x), y_diff = Math.abs(ry - y), z_diff = Math.abs(rz - z);
+    if (x_diff > y_diff && x_diff > z_diff) rx = -ry - rz; else if (y_diff > z_diff) ry = -rx - rz; else rz = -rx - ry;
+    return { x:rx, y:ry, z:rz };
+  }
+  // pixel->axial (flat-top)
+  function pixelToAxial(px, py, size=HEX_SIZE) {
+    const q = (2/3) * px / size;
+    const r = (-1/3) * px / size + (1/SQRT3) * py / size;
+    const c = axialToCube(q, r);
+    const cr = cubeRound(c.x, c.y, c.z);
+    const { q:aq, r:ar } = cubeToAxial(cr.x, cr.y, cr.z);
+    return { q:aq, r:ar };
+  }
+
+  function hexPath(ctx, cx, cy, size) {
+    ctx.beginPath();
+    for (let i=0;i<6;i++){
+      const ang = (Math.PI/3) * i;
+      const x = cx + size * Math.cos(ang);
+      const y = cy + size * Math.sin(ang);
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+  }
+
+  function hexRingDistance(q, r) {
+    // distance from (0,0)
+    const x=q, z=r, y=-x-z;
+    return Math.max(Math.abs(x), Math.abs(y), Math.abs(z));
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // OSRS Wiki search (reused from TileTrials editor)
+  // ──────────────────────────────────────────────────────────────
+  const WIKI_API = 'https://oldschool.runescape.wiki/api.php';
+  const WIKI_MEMO = new Map();
+  const WIKI_QUERY_MEMO = new Map();
+
+  async function backoffFetch(url, opts = {}, tries = 2) {
+    let last; for (let i=0;i<tries;i++){ const res = await fetch(url, opts).catch(e => (last=e,null)); if (!res) continue; if (res.status !== 429) return res; const retryAfter = Number(res.headers.get('retry-after')) || 0; const wait = retryAfter ? retryAfter*1000 : (600 + Math.random()*600); await new Promise(r=>setTimeout(r, wait)); } throw last || new Error('Rate limited'); }
+
+  async function wikiGetImageInfo(fileNames, width = 192) {
+    const results = [];
+    for (let i = 0; i < fileNames.length; i += 40) {
+      const chunk = fileNames.slice(i, i + 40);
+      const toFetch = [], cached = [];
+      for (const name of chunk) {
+        const k = `ii|${width}|${name}`; const hit = WIKI_MEMO.get(k);
+        if (hit) cached.push({ name, ...hit }); else toFetch.push(name);
+      }
+      if (toFetch.length) {
+        const body = new URLSearchParams({ action:'query', format:'json', origin:'*', prop:'imageinfo', iiprop:'url', iiurlwidth:String(width), titles: toFetch.map(n => `File:${n}`).join('|') });
+        const res = await backoffFetch(WIKI_API, { method:'POST', body });
+        const json = await res.json(); const pages = json?.query?.pages || {};
+        for (const p of Object.values(pages)) { const title=(p.title||'').replace(/^File:/,''); const ii=(p.imageinfo&&p.imageinfo[0])||{}; const rec = { name:title, fileUrl: ii.url||'', thumbUrl: ii.thumburl||ii.url||'' }; results.push(rec); if (title) WIKI_MEMO.set(`ii|${width}|${title}`, { fileUrl:rec.fileUrl, thumbUrl:rec.thumbUrl }); }
+      }
+      results.push(...cached);
+    }
+    return results;
+  }
+
+  async function wikiSearchFiles(prefix, limit=40, thumbWidth=192) {
+    const q=(prefix||'').trim(); if (q.length<2) return [];
+    const memoKey = `ps|${q}|${thumbWidth}`; if (WIKI_QUERY_MEMO.has(memoKey)) return WIKI_QUERY_MEMO.get(memoKey);
+    const qsPS = new URLSearchParams({ action:'query', format:'json', origin:'*', list:'prefixsearch', pssearch:q, psnamespace:'6', pslimit:String(Math.min(limit,50)) });
+    let names=[]; try { const res = await backoffFetch(`${WIKI_API}?${qsPS.toString()}`); const json = await res.json().catch(()=>({})); names = (json?.query?.prefixsearch||[]).map(p => (p.title||'').replace(/^File:/,'')).filter(Boolean); } catch {}
+    if (!names.length) {
+      const qsAI = new URLSearchParams({ action:'query', format:'json', origin:'*', list:'allimages', aiprefix:q[0]?.toUpperCase()+q.slice(1), ailimit:String(Math.min(limit,50)) });
+      try { const resAI = await backoffFetch(`${WIKI_API}?${qsAI.toString()}`); const jsonAI = await resAI.json().catch(()=>({})); names = (jsonAI?.query?.allimages||[]).map(img=>img.name || (img.title||'').replace(/^File:/,'')).filter(Boolean); } catch {}
+    }
+    const info = names.length ? await wikiGetImageInfo(names, thumbWidth) : [];
+    WIKI_QUERY_MEMO.set(memoKey, info);
+    return info;
+  }
+
+  function download(filename, text) {
+    const blob = new Blob([text], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href=url; a.download=filename; a.click(); URL.revokeObjectURL(url);
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // Data model
+  // ──────────────────────────────────────────────────────────────
+  const TIER_COLORS = { easy:'#66bb6a', medium:'#ffa726', hard:'#ef5350' };
+  const STATUS_EFFECTS = [
+    // keep in sync with your renderer's statuseffects folder names
+    'double_points', 'bonus', 'blessing', 'curse', 'poison', 'freeze', 'stun', 'slow',
+  ];
+
+  function makeNode({ id, q, r, tier='easy', name='', taskName='', basePoints=10, phaseDepth=null, depth=null }={}){
+    const ring = hexRingDistance(q||0, r||0);
+    const d = Number.isFinite(depth) ? depth : ring;
+    const pd = Number.isFinite(phaseDepth) ? phaseDepth : d;
+    return {
+      id: id || (q===0 && r===0 ? 'hub' : `q${q}r${r}`),
+      name, taskName,
+      tier, branch:tier,
+      basePoints, depth:d, phaseDepth:pd,
+      icon: '', // string or { file, size, scale, offsetX, offsetY, effect, ringColor }
+      statusEffects: [], // array of strings
+      hex: { q, r },
+    };
+  }
+
+  function normalizeImportedNodes(raw) {
+    // Accept array, or { nodes: [] }
+    const list = Array.isArray(raw) ? raw : (Array.isArray(raw?.nodes) ? raw.nodes : []);
+    const out = [];
+    for (const n of list) {
+      if (!n) continue;
+      const hex = n.hex || n.position?.hex || n.pos || n.coords || null;
+      let q = 0, r = 0;
+      if (hex && Number.isFinite(hex.q) && Number.isFinite(hex.r)) { q=Number(hex.q); r=Number(hex.r); }
+      else if (Number.isFinite(n.q) && Number.isFinite(n.r)) { q=Number(n.q); r=Number(n.r); }
+      const tier = String(n.tier ?? n.branch ?? 'easy').toLowerCase();
+      const node = makeNode({ id: String(n.id || `q${q}r${r}`), q, r, tier, name: String(n.name||''), taskName: String(n.taskName||'') , basePoints: Number(n.basePoints ?? n.points ?? 10), phaseDepth: Number.isFinite(n.phaseDepth)?Number(n.phaseDepth):null, depth: Number.isFinite(n.depth)?Number(n.depth):null });
+      // icon mapping
+      if (n.icon) node.icon = n.icon; else if (n.task && n.task.icon) node.icon = n.task.icon; else if (n.iconFile) node.icon = n.iconFile;
+      // effects mapping
+      if (Array.isArray(n.statusEffects)) node.statusEffects = n.statusEffects.slice();
+      else if (Array.isArray(n.effects)) node.statusEffects = n.effects.slice();
+      out.push(node);
+    }
+    // Ensure hub present
+    if (!out.some(n=>n.id==='hub')) out.push(makeNode({ id:'hub', q:0, r:0, tier:'easy', name:'Hub', taskName:'Hub', basePoints:0, phaseDepth:0, depth:0 }));
+    return out;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // Components
+  // ──────────────────────────────────────────────────────────────
+  function useResizeObserver(ref, handler) {
+    useEffect(() => {
+      if (!ref.current) return;
+      const ro = new ResizeObserver(()=>handler());
+      ro.observe(ref.current);
+      handler();
+      return () => ro.disconnect();
+    }, [ref, handler]);
+  }
+
+  function IconPicker({ initialQuery='', onPick, onClose }){
+    const [q, setQ] = useState(initialQuery);
+    const [items, setItems] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [err, setErr] = useState('');
+    const QUICK = ['Zulrah','Vorkath','Barrows','Slayer','Dragon','Herblore','Agility','Fishing','Runecraft'];
+    const run = async (query) => {
+      const term=(query||'').trim(); if (term.length<2) { setItems([]); setErr(''); return; }
+      setLoading(true); setErr('');
+      try { const list = await wikiSearchFiles(term, 40, 192); setItems(list); }
+      catch { setErr('Wiki rate-limited or unreachable. Try again in a moment.'); }
+      finally { setLoading(false); }
+    };
+    return (
+      React.createElement('div', { className:'fixed inset-0 z-50 grid place-items-center bg-black/50 p-4' },
+        React.createElement('div', { className:'w-full max-w-3xl panel-medieval p-4' },
+          React.createElement('div', { className:'mb-3 flex items-center gap-2' },
+            React.createElement('input', { className:'w-full rounded-lg border-slate-300', placeholder:'Search OSRS Wiki files (e.g., "Zulrah")', value:q, onChange:e=>setQ(e.target.value), onKeyDown:e=>{ if(e.key==='Enter'&&!loading&&q.trim().length>=2){ e.preventDefault(); run(q); } }, autoFocus:true }),
+            React.createElement('button', { className:'btn-bronze', disabled:(q.trim().length<2)||loading, onClick:()=>run(q) }, loading?'Searching…':'Search'),
+            React.createElement('button', { className:'btn-stone ml-auto', onClick:onClose }, 'Close')
+          ),
+          React.createElement('div', { className:'flex flex-wrap gap-2 mb-3' }, QUICK.map(term => React.createElement('button', { key:term, className:'btn-stone', onClick:()=>{ setQ(term); run(term); } }, term))),
+          err && React.createElement('div', { className:'text-sm text-rose-600' }, err),
+          React.createElement('div', { className:'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 max-h-[60vh] overflow-auto' },
+            items.map(f => React.createElement('button', { key:f.name, className:'rounded-lg border border-slate-200 bg-white/70 hover:shadow soft p-2 flex flex-col items-center gap-2', onClick:()=>{ onPick?.(f.thumbUrl||f.fileUrl, f); onClose?.(); }},
+              React.createElement('img', { src:f.thumbUrl||f.fileUrl, alt:f.name, className:'w-20 h-20 object-contain', onError:(e)=>{ e.currentTarget.style.visibility='hidden'; } }),
+              React.createElement('div', { className:'text-[10px] text-slate-700 text-center break-all' }, f.name)
+            ))
+          )
+        )
+      )
+    );
+  }
+
+  function Toolbar({ onAddNode, onAddRing, onAutoDepth, onImportNodes, onExportNodes, onExportState, count }){
+    const fileRef = useRef(null);
+    const triggerImport = () => fileRef.current?.click();
+    const onFile = (e) => {
+      const f = e.target.files && e.target.files[0]; if (!f) return;
+      const fr = new FileReader(); fr.onload = () => onImportNodes(String(fr.result||'')); fr.readAsText(f); e.target.value='';
+    };
+    return (
+      React.createElement('div', { className:'flex flex-wrap items-center gap-2' },
+        React.createElement('button', { className:'btn-bronze', onClick:onAddNode }, '+ Node'),
+        React.createElement('button', { className:'btn-bronze', onClick:onAddRing, title:'Add a ring of 6 around the current outer radius' }, '+ Ring'),
+        React.createElement('button', { className:'btn-bronze', onClick:onAutoDepth, title:'Set depth/phaseDepth = ring distance from hub' }, 'Auto Depth (by ring)'),
+        React.createElement('button', { className:'btn-bronze', onClick:triggerImport }, 'Import nodes.json'),
+        React.createElement('button', { className:'btn-bronze', onClick:onExportNodes }, 'Export nodes.json'),
+        React.createElement('button', { className:'btn-bronze', onClick:onExportState }, 'Export state.json'),
+        React.createElement('input', { ref:fileRef, type:'file', accept:'.json,application/json', className:'hidden', onChange:onFile }),
+        React.createElement('div', { className:'ml-auto text-sm text-slate-600' }, `${count} node${count===1?'':'s'}`)
+      )
+    );
+  }
+
+  function NodeEditor({ node, setNode, onDelete }){
+    const [openPicker, setOpenPicker] = useState(false);
+    if (!node) return React.createElement('div', { className:'text-slate-500' }, 'Select a node.');
+    const update = (patch) => setNode({ ...node, ...patch });
+    const setIconString = (s) => {
+      // If the user pasted a raw URL, use string; if they want rich object, they can edit JSON area below
+      update({ icon: s });
+    };
+    const iconStr = (typeof node.icon === 'string') ? node.icon : (node.icon?.file || '');
+
+    return (
+      React.createElement('div', { className:'space-y-4' },
+        React.createElement('div', { className:'grid grid-cols-2 gap-3' },
+          React.createElement('div', null,
+            React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-1' }, 'ID'),
+            React.createElement('input', { className:'w-full rounded-lg border-slate-300', value:node.id, onChange:e=>update({ id:e.target.value }) })
+          ),
+          React.createElement('div', null,
+            React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-1' }, 'Tier'),
+            React.createElement('select', { className:'w-full rounded-lg border-slate-300', value:node.tier, onChange:e=>update({ tier:e.target.value, branch:e.target.value }) },
+              React.createElement('option', { value:'easy' }, 'easy'),
+              React.createElement('option', { value:'medium' }, 'medium'),
+              React.createElement('option', { value:'hard' }, 'hard')
+            )
+          )
+        ),
+
+        React.createElement('div', { className:'grid grid-cols-2 gap-3' },
+          React.createElement('div', null,
+            React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-1' }, 'Name (optional)'),
+            React.createElement('input', { className:'w-full rounded-lg border-slate-300', value:node.name||'', onChange:e=>update({ name:e.target.value }) })
+          ),
+          React.createElement('div', null,
+            React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-1' }, 'Task Name (optional)'),
+            React.createElement('input', { className:'w-full rounded-lg border-slate-300', value:node.taskName||'', onChange:e=>update({ taskName:e.target.value }) })
+          )
+        ),
+
+        React.createElement('div', { className:'grid grid-cols-3 gap-3' },
+          React.createElement('div', null,
+            React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-1' }, 'Base Points'),
+            React.createElement('input', { className:'w-full rounded-lg border-slate-300', type:'number', value:Number(node.basePoints||0), onChange:e=>update({ basePoints:Number(e.target.value||0) }) })
+          ),
+          React.createElement('div', null,
+            React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-1' }, 'depth'),
+            React.createElement('input', { className:'w-full rounded-lg border-slate-300', type:'number', value:Number(node.depth||0), onChange:e=>update({ depth:Number(e.target.value||0) }) })
+          ),
+          React.createElement('div', null,
+            React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-1' }, 'phaseDepth'),
+            React.createElement('input', { className:'w-full rounded-lg border-slate-300', type:'number', value:Number(node.phaseDepth||0), onChange:e=>update({ phaseDepth:Number(e.target.value||0) }) })
+          )
+        ),
+
+        React.createElement('div', { className:'grid grid-cols-3 gap-3' },
+          React.createElement('div', null,
+            React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-1' }, 'q'),
+            React.createElement('input', { className:'w-full rounded-lg border-slate-300', type:'number', value:Number(node.hex?.q||0), onChange:e=>update({ hex:{ q:Number(e.target.value||0), r:node.hex?.r||0 }, id: (node.id==='hub')?'hub':`q${Number(e.target.value||0)}r${node.hex?.r||0}` }) })
+          ),
+          React.createElement('div', null,
+            React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-1' }, 'r'),
+            React.createElement('input', { className:'w-full rounded-lg border-slate-300', type:'number', value:Number(node.hex?.r||0), onChange:e=>update({ hex:{ q:node.hex?.q||0, r:Number(e.target.value||0) }, id: (node.id==='hub')?'hub':`q${node.hex?.q||0}r${Number(e.target.value||0)}` }) })
+          ),
+          React.createElement('div', { className:'flex items-end gap-2' },
+            React.createElement('button', { className:'btn-stone w-full', onClick:()=>{ const q=node.hex?.q||0, r=node.hex?.r||0; const d=hexRingDistance(q,r); update({ depth:d, phaseDepth:d }); } }, 'Set depth from ring')
+          )
+        ),
+
+        React.createElement('div', null,
+          React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-1' }, 'Icon (string or object)') ,
+          React.createElement('input', { className:'w-full rounded-lg border-slate-300', placeholder:'Paste URL (string) or click picker below', value: iconStr, onChange:e=>setIconString(e.target.value) }),
+          React.createElement('div', { className:'flex gap-2 mt-2' },
+            React.createElement('button', { className:'btn-stone', onClick:()=>setOpenPicker(true) }, 'Pick from OSRS Wiki'),
+            React.createElement('button', { className:'btn-stone', onClick:()=>setIconString('') }, 'Clear')
+          ),
+          (typeof node.icon !== 'string') && React.createElement('div', { className:'mt-2' },
+            React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-1' }, 'Icon object JSON (advanced)'),
+            React.createElement('textarea', { className:'w-full rounded-lg border-slate-300 text-xs', rows:5, value: JSON.stringify(node.icon||{}, null, 2), onChange:e=>{ try{ const obj=JSON.parse(e.target.value||'{}'); update({ icon: obj }); }catch{} } })
+          ),
+          openPicker && React.createElement(IconPicker, { onPick:(url)=>{ setIconString(url); }, onClose:()=>setOpenPicker(false) })
+        ),
+
+        React.createElement('div', null,
+          React.createElement('label', { className:'block text-xs font-medium text-slate-600 mb-2' }, 'Status Effects (badges)'),
+          React.createElement('div', { className:'flex flex-wrap gap-2' },
+            STATUS_EFFECTS.map(k => React.createElement('label', { key:k, className:'inline-flex items-center gap-2 text-sm bg-white/70 rounded-lg px-2 py-1 border border-slate-200' },
+              React.createElement('input', { type:'checkbox', checked:(node.statusEffects||[]).includes(k), onChange:e=>{
+                const set = new Set(node.statusEffects||[]); if (e.target.checked) set.add(k); else set.delete(k); update({ statusEffects:[...set] });
+              }}),
+              React.createElement('span', null, k)
+            ))
+          )
+        ),
+
+        React.createElement('div', { className:'flex gap-2' },
+          React.createElement('button', { className:'px-3 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700', onClick:onDelete }, 'Delete Node')
+        )
+      )
+    );
+  }
+
+  function StatePanel({ fog, setFog, distanceFog, setDistanceFog, growthPhase, setGrowthPhase }){
+    const updateFog = (patch)=> setFog({ ...fog, ...patch });
+    const updateDist= (patch)=> setDistanceFog({ ...distanceFog, ...patch });
+    const updateGP = (branch, v)=> setGrowthPhase({ ...growthPhase, [branch]: Number(v||0) });
+
+    return (
+      React.createElement('div', { className:'space-y-4' },
+        React.createElement('div', null,
+          React.createElement('h3', { className:'heading-medieval text-sm mb-2' }, 'Growth Phase (initial)'),
+          React.createElement('div', { className:'grid grid-cols-3 gap-2' },
+            React.createElement('div', null,
+              React.createElement('label', { className:'block text-xs mb-1 text-slate-600' }, 'easy'),
+              React.createElement('input', { type:'number', className:'w-full rounded-lg border-slate-300', value:Number(growthPhase.easy||0), onChange:e=>updateGP('easy', e.target.value) })
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className:'block text-xs mb-1 text-slate-600' }, 'medium'),
+              React.createElement('input', { type:'number', className:'w-full rounded-lg border-slate-300', value:Number(growthPhase.medium||0), onChange:e=>updateGP('medium', e.target.value) })
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className:'block text-xs mb-1 text-slate-600' }, 'hard'),
+              React.createElement('input', { type:'number', className:'w-full rounded-lg border-slate-300', value:Number(growthPhase.hard||0), onChange:e=>updateGP('hard', e.target.value) })
+            )
+          )
+        ),
+
+        React.createElement('div', null,
+          React.createElement('h3', { className:'heading-medieval text-sm mb-2' }, 'Fog'),
+          React.createElement('div', { className:'grid grid-cols-3 gap-2' },
+            React.createElement('label', { className:'flex items-center gap-2 text-sm' },
+              React.createElement('input', { type:'checkbox', checked:fog.enabled!==false, onChange:e=>updateFog({ enabled:e.target.checked }) }), 'enabled'
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className:'block text-xs mb-1 text-slate-600' }, 'alpha'),
+              React.createElement('input', { type:'number', step:'0.05', className:'w-full rounded-lg border-slate-300', value:Number(fog.alpha??0.9), onChange:e=>updateFog({ alpha:Number(e.target.value||0) }) })
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className:'block text-xs mb-1 text-slate-600' }, 'color'),
+              React.createElement('input', { type:'text', className:'w-full rounded-lg border-slate-300', value:String(fog.color||'#0a0d11'), onChange:e=>updateFog({ color:e.target.value }) })
+            )
+          )
+        ),
+
+        React.createElement('div', null,
+          React.createElement('h3', { className:'heading-medieval text-sm mb-2' }, 'Distance Fog'),
+          React.createElement('div', { className:'grid grid-cols-2 md:grid-cols-4 gap-2' },
+            React.createElement('label', { className:'flex items-center gap-2 text-sm' },
+              React.createElement('input', { type:'checkbox', checked:distanceFog.enabled!==false, onChange:e=>updateDist({ enabled:e.target.checked }) }), 'enabled'
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className:'block text-xs mb-1 text-slate-600' }, 'anchor'),
+              React.createElement('select', { className:'w-full rounded-lg border-slate-300', value:String(distanceFog.anchor||'hub'), onChange:e=>updateDist({ anchor:e.target.value }) },
+                React.createElement('option', { value:'hub' }, 'hub'),
+                React.createElement('option', { value:'viewer' }, 'viewer')
+              )
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className:'block text-xs mb-1 text-slate-600' }, 'nearErase'),
+              React.createElement('input', { type:'number', step:'0.05', className:'w-full rounded-lg border-slate-300', value:Number(distanceFog.nearErase??1), onChange:e=>updateDist({ nearErase:Number(e.target.value||0) }) })
+            ),
+            React.createElement('div', null,
+              React.createElement('label', { className:'block text-xs mb-1 text-slate-600' }, 'farErase'),
+              React.createElement('input', { type:'number', step:'0.05', className:'w-full rounded-lg border-slate-300', value:Number(distanceFog.farErase??0.25), onChange:e=>updateDist({ farErase:Number(e.target.value||0) }) })
+            )
+          )
+        )
+      )
+    );
+  }
+
+  function CanvasBoard({ nodes, setSelectedId, onDragMove }){
+    const wrapRef = useRef(null);
+    const canvasRef = useRef(null);
+    const [size, setSize] = useState({ w: 800, h: 600 });
+    const [zoom, setZoom] = useState(1);
+
+    // compute bounds
+    const bounds = useMemo(()=>{
+      let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
+      for (const n of nodes){ const {q,r}=n.hex||{q:0,r:0}; const c = axialToPixel(q,r); minX = Math.min(minX, c.x-HEX_SIZE*1.1); maxX=Math.max(maxX,c.x+HEX_SIZE*1.1); minY=Math.min(minY,c.y-HEX_SIZE*1.1); maxY=Math.max(maxY,c.y+HEX_SIZE*1.1); }
+      if (!Number.isFinite(minX)) { minX=0;minY=0;maxX=0;maxY=0; }
+      const pad=40; return { minX, minY, maxX, maxY, w: (maxX-minX)+pad*2, h: (maxY-minY)+pad*2, pad };
+    }, [nodes]);
+
+    const PADDING = 24; // UI padding around canvas
+
+    useResizeObserver(wrapRef, ()=>{
+      if (!wrapRef.current) return; const rect = wrapRef.current.getBoundingClientRect(); setSize({ w: Math.max(300, rect.width), h: Math.max(300, 0.66*rect.width) });
+    });
+
+    useEffect(()=>{
+      const c = canvasRef.current; if (!c) return; c.width = Math.floor(size.w); c.height = Math.floor(size.h);
+      const ctx = c.getContext('2d'); ctx.imageSmoothingEnabled = true; if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality='high';
+      // bg
+      ctx.fillStyle = '#1f2937'; ctx.fillRect(0,0,c.width,c.height);
+
+      // scale to fit bounds
+      const scaleX = (c.width - PADDING*2) / (bounds.w || 1);
+      const scaleY = (c.height - PADDING*2) / (bounds.h || 1);
+      const s = Math.max(0.2, Math.min(scaleX, scaleY)) * zoom;
+      ctx.save();
+      ctx.translate(PADDING, PADDING);
+      ctx.scale(s, s);
+      ctx.translate(-bounds.minX + bounds.pad, -bounds.minY + bounds.pad);
+
+      // draw nodes
+      for (const n of nodes){
+        const { q, r } = n.hex || { q:0, r:0 };
+        const { x, y } = axialToPixel(q, r);
+        const size = n.id==='hub' ? HEX_SIZE+6 : HEX_SIZE;
+
+        // parchment fill
+        ctx.save();
+        hexPath(ctx, x, y, size);
+        const g = ctx.createLinearGradient(x, y-size, x, y+size);
+        g.addColorStop(0, 'rgba(249,239,210,0.92)');
+        g.addColorStop(1, 'rgba(232,214,170,0.92)');
+        ctx.fillStyle = g; ctx.fill();
+        ctx.lineWidth = 3; ctx.strokeStyle = '#2e2e2e'; ctx.stroke();
+        // inner shadow tint by tier
+        const col = TIER_COLORS[(n.tier||'easy')] || '#cd7f32';
+        const ig = ctx.createRadialGradient(x, y, Math.max(1,size*0.25), x, y, size);
+        ig.addColorStop(0.0, 'rgba(0,0,0,0)');
+        ig.addColorStop(0.8, hexToRgba(col, 0.2));
+        ig.addColorStop(1.0, hexToRgba(col, 0.2));
+        ctx.fillStyle = ig; ctx.fill();
+        ctx.restore();
+
+        // icon or name — ensure fully visible and not faded
+        const label = n.taskName || n.name || '';
+        if (n.icon) {
+          // draw as image if string URL
+          if (typeof n.icon === 'string') {
+            drawImageCached(ctx, n.icon, x, y, Math.floor(size*0.9));
+          } else if (n.icon && (n.icon.file||n.icon.url)) {
+            const s = Math.floor((n.icon.size || (HEX_SIZE*(n.icon.scale||0.9))));
+            drawImageCached(ctx, n.icon.file||n.icon.url, x + (n.icon.offsetX||0), y + (n.icon.offsetY||0), s);
+          }
+        } else if (label) {
+          ctx.save(); ctx.font = `bold ${Math.floor(size*0.28)}px RuneScape-Quill`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='#2c1a0e'; ctx.shadowColor='rgba(0,0,0,0.75)'; ctx.shadowBlur=1; ctx.shadowOffsetY=1; ctx.fillText(label, x, y); ctx.restore();
+        }
+
+        // effects badges
+        if (Array.isArray(n.statusEffects) && n.statusEffects.length){
+          const badge = Math.max(14, Math.floor(size*0.26));
+          const gap = 4; const totalW = n.statusEffects.length*badge + (n.statusEffects.length-1)*gap; const by = y + (Math.sqrt(3)*size)/2 - badge - 5; let bx = x - totalW/2;
+          for (const k of n.statusEffects.slice(0,4)) { drawBadge(ctx, bx, by, badge, `assets/images/sstatuseffects/${k}.png`, k); bx += badge + gap; }
+        }
+
+        // coord tag
+        drawCoordTag(ctx, x, y, size-1, `${q},${r}`);
+      }
+
+      ctx.restore();
+
+      function hexToRgba(hex, a){
+        const c = hex.replace('#','').trim(); let r,g,b; if (c.length===3){ r=parseInt(c[0]+c[0],16); g=parseInt(c[1]+c[1],16); b=parseInt(c[2]+c[2],16);} else { r=parseInt(c.slice(0,2),16); g=parseInt(c.slice(2,4),16); b=parseInt(c.slice(4,6),16);} return `rgba(${r},${g},${b},${a})`;
+      }
+      function drawBadge(ctx, x,y, sz, url, fallback){
+        ctx.save();
+        ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur=4; ctx.shadowOffsetX=1; ctx.shadowOffsetY=1;
+        ctx.fillStyle='rgba(0,0,0,0.55)';
+        const r=Math.floor(sz*0.25);
+        ctx.beginPath();
+        ctx.moveTo(x+r,y); ctx.arcTo(x+sz,y,x+sz,y+sz,r); ctx.arcTo(x+sz,y+sz,x,y+sz,r); ctx.arcTo(x,y+sz,x,y,r); ctx.arcTo(x,y,x+sz,y,r); ctx.closePath(); ctx.fill();
+        ctx.shadowBlur=0; ctx.shadowOffsetX=0; ctx.shadowOffsetY=0; drawImageCached(ctx, url, x+2, y+2, sz-4, sz-4, true, fallback);
+        ctx.restore();
+      }
+      function drawCoordTag(ctx, cx, cy, size, text){
+        const pad = Math.max(4, Math.floor(size*0.08)); const fontPx = Math.max(11, Math.floor(size*0.24));
+        const brx = cx + size*Math.cos(Math.PI/3); const bry = cy + size*Math.sin(Math.PI/3);
+        const x = brx - 8 - pad; const y = bry - fontPx - pad*2;
+        const w = ctx.measureText(text).width + pad*2; const h = Math.ceil(fontPx*1.2);
+        ctx.save(); ctx.shadowColor='rgba(0,0,0,0.6)'; ctx.shadowBlur=2;
+        roundRect(ctx, x-w, y, w, h, Math.floor(h/2)); ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fill();
+        ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.lineWidth=1.5; ctx.strokeStyle='rgba(0,0,0,0.9)'; ctx.fillStyle='#fff'; ctx.font=`bold ${fontPx}px RuneScape-Quill`;
+        ctx.strokeText(text, x-w+pad, y+h/2); ctx.fillText(text, x-w+pad, y+h/2);
+        ctx.restore();
+      }
+      function roundRect(ctx, x,y,w,h,r){ const rr=Math.min(r,w*0.5,h*0.5); ctx.beginPath(); ctx.moveTo(x+rr,y); ctx.lineTo(x+w-rr,y); ctx.quadraticCurveTo(x+w,y,x+w,y+rr); ctx.lineTo(x+w,y+h-rr); ctx.quadraticCurveTo(x+w,y+h,x+w-rr,y+h); ctx.lineTo(x+rr,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-rr); ctx.lineTo(x,y+rr); ctx.quadraticCurveTo(x,y,x+rr,y); ctx.closePath(); }
+    }, [nodes, size, bounds, zoom]);
+
+    // Minimal image cache for icons
+    const _cache = useRef(new Map());
+    function drawImageCached(ctx, url, cx, cy, size, sizeH, isBadge=false, fallback=''){
+      // Overloaded: (ctx,url,cx,cy,size) OR (ctx,url,x,y,w,h)
+      const key=url; if(!url) return; const img = _cache.current.get(key);
+      const draw = (image) => {
+        if (!image) return;
+        if (sizeH === true) { // special badge shorthand: size is square size, and we already did bg
+          ctx.drawImage(image, cx, cy, size, size);
+          return;
+        }
+        if (typeof sizeH === 'number') ctx.drawImage(image, cx, cy, size, sizeH);
+        else ctx.drawImage(image, Math.round(cx - size/2), Math.round(cy - size/2), size, size);
+      };
+      if (img) { draw(img); return; }
+      const im = new Image(); im.crossOrigin='anonymous'; im.onload=()=>{ _cache.current.set(key, im); draw(im); }; im.onerror=()=>{ /* fallback badge letters if needed */ }; im.src=url;
+    }
+
+    // hit detection + drag move
+    const drag = useRef({ id:null, start:null });
+    const onDown = (e) => {
+      const rect = canvasRef.current.getBoundingClientRect(); const px = e.clientX - rect.left; const py = e.clientY - rect.top;
+      // invert current transform
+      const scaleX = (canvasRef.current.width - PADDING*2) / (bounds.w || 1);
+      const scaleY = (canvasRef.current.height - PADDING*2) / (bounds.h || 1);
+      const s = Math.max(0.2, Math.min(scaleX, scaleY)) * zoom;
+      const mx = (px - PADDING) / s + (bounds.minX - bounds.pad);
+      const my = (py - PADDING) / s + (bounds.minY - bounds.pad);
+      // find node under mouse
+      for (const n of [...nodes].reverse()){
+        const {x,y} = axialToPixel(n.hex.q, n.hex.r); const d = Math.hypot(mx-x, my-y);
+        const radius = (n.id==='hub' ? HEX_SIZE+6 : HEX_SIZE) * 0.95;
+        if (d <= radius){ drag.current = { id:n.id, start:{ mx,my } }; setSelectedId(n.id); return; }
+      }
+      setSelectedId(null);
+    };
+    const onMove = (e) => { if (!drag.current.id) return; e.preventDefault(); };
+    const onUp = (e) => {
+      if (!drag.current.id) return; const id = drag.current.id; drag.current = { id:null, start:null };
+      const rect = canvasRef.current.getBoundingClientRect(); const px = e.clientX - rect.left; const py = e.clientY - rect.top;
+      const scaleX = (canvasRef.current.width - PADDING*2) / (bounds.w || 1);
+      const scaleY = (canvasRef.current.height - PADDING*2) / (bounds.h || 1);
+      const s = Math.max(0.2, Math.min(scaleX, scaleY)) * zoom;
+      const mx = (px - PADDING) / s + (bounds.minX - bounds.pad);
+      const my = (py - PADDING) / s + (bounds.minY - bounds.pad);
+      const ax = pixelToAxial(mx, my);
+      onDragMove?.(id, ax.q, ax.r);
+    };
+
+    return (
+      React.createElement('div', { ref:wrapRef, className:'relative w-full h-[60vh] min-h-[420px] bg-black/20 rounded-xl overflow-hidden' },
+        React.createElement('canvas', { ref:canvasRef, className:'absolute inset-0', onMouseDown:onDown, onMouseMove:onMove, onMouseUp:onUp }),
+        React.createElement('div', { className:'absolute right-2 bottom-2 flex items-center gap-2 bg-white/80 rounded-xl p-2 shadow' },
+          React.createElement('span', { className:'text-xs text-slate-700' }, 'Zoom'),
+          React.createElement('input', { type:'range', min:'0.4', max:'2', step:'0.05', value:zoom, onChange:e=>setZoom(Number(e.target.value)) })
+        )
+      )
+    );
+  }
+
+  function App(){
+    const [nodes, setNodes] = useState(()=>{
+      // default: hub + 6 around
+      const out = [ makeNode({ id:'hub', q:0, r:0, tier:'easy', name:'Hub', taskName:'Hub', basePoints:0, depth:0, phaseDepth:0 }) ];
+      const around = [ [1,0],[0,1],[-1,1],[-1,0],[0,-1],[1,-1] ];
+      around.forEach(([q,r],i)=> out.push(makeNode({ q, r, tier: (i%3===0?'easy':i%3===1?'medium':'hard'), name:`Node ${i+1}`, basePoints: (i%3===0?10:i%3===1?20:30) })));
+      return out;
+    });
+    const [selectedId, setSelectedId] = useState('hub');
+
+    const [fog, setFog] = useState({ enabled:true, scale:1.8, octaves:5, lacunarity:2.0, gain:0.5, warp:18, resolutionScale:0.6, contrast:1.25, brightness:-0.1, invert:false, color:'#0a0d11', alpha:0.9, revealFeather:0, blend:'source-over', globalAlpha:1, doubleLayer:true });
+    const [distanceFog, setDistanceFog] = useState({ enabled:true, anchor:'hub', nearErase:1, farErase:0.25, maxRings:null, curve:'smooth' });
+    const [growthPhase, setGrowthPhase] = useState({ easy:1, medium:1, hard:1 });
+
+    const selected = useMemo(()=> nodes.find(n=>n.id===selectedId) || null, [nodes, selectedId]);
+
+    const replaceNode = (next) => setNodes(prev => prev.map(n => n.id===next.id ? next : n));
+
+    const addNode = () => {
+      // place at empty coord next to farthest ring
+      const ringMax = Math.max(...nodes.map(n=>hexRingDistance(n.hex.q, n.hex.r)));
+      const q = ringMax+1, r = 0; const candidateId = `q${q}r${r}`;
+      const nn = makeNode({ id:candidateId, q, r, tier:'easy', name:'', basePoints:10 }); setNodes(prev=>[...prev, nn]); setSelectedId(candidateId);
+    };
+
+    const addRing = () => {
+      // add 6*ring nodes around max ring+1 (simple star on axial axes)
+      const ringMax = Math.max(...nodes.map(n=>hexRingDistance(n.hex.q, n.hex.r)));
+      const ring = ringMax + 1; const coords = [ [ring,0], [0,ring], [-ring,ring], [-ring,0], [0,-ring], [ring,-ring] ];
+      setNodes(prev => {
+        const ids = new Set(prev.map(n=>n.id)); const out = prev.slice();
+        for (const [q,r] of coords){ const id = `q${q}r${r}`; if (ids.has(id)) continue; out.push(makeNode({ id, q, r, tier: (Math.abs(q+r)%3===0?'easy':Math.abs(q+r)%3===1?'medium':'hard'), basePoints: 10 + 10*((Math.abs(q+r))%3) })); }
+        return out;
+      });
+    };
+
+    const autoDepth = () => setNodes(prev => prev.map(n => ({ ...n, depth: hexRingDistance(n.hex.q, n.hex.r), phaseDepth: hexRingDistance(n.hex.q, n.hex.r) })));
+
+    const importNodes = (text) => {
+      try{ const raw = JSON.parse(text); const list = normalizeImportedNodes(raw); setNodes(list); const hub = list.find(n=>n.id==='hub'); setSelectedId(hub?hub.id:list[0]?.id||null); }
+      catch(e){ alert('Invalid JSON: '+e.message); }
+    };
+
+    const exportNodes = () => {
+      // Export array of nodes in the shape your renderer & service expect
+      const out = nodes.map(n => ({
+        id: n.id,
+        name: n.name||'',
+        taskName: n.taskName||'',
+        tier: n.tier||'easy',
+        branch: n.branch||n.tier||'easy',
+        basePoints: Number(n.basePoints||0),
+        depth: Number(n.depth||0),
+        phaseDepth: Number(n.phaseDepth||n.depth||0),
+        icon: n.icon||'',
+        statusEffects: Array.isArray(n.statusEffects)?n.statusEffects:[],
+        hex: { q: Number(n.hex?.q||0), r: Number(n.hex?.r||0) },
+      }));
+      download('nodes.json', JSON.stringify(out, null, 2));
+    };
+
+    const exportState = () => {
+      const state = {
+        teams: {},
+        growthPhase: { ...growthPhase },
+        settings: { globalDiscovery:false },
+        global: { claimedNodeIds: [], grownNodeIds: [] },
+        lastGrowthAt: null,
+        fog: { ...fog },
+        distanceFog: { ...distanceFog },
+        growthMeta: { easy:{ updatedAt: Date.now() }, medium:{ updatedAt: Date.now() }, hard:{ updatedAt: Date.now() } }
+      };
+      download('state.json', JSON.stringify(state, null, 2));
+    };
+
+    const onDragMove = (id, q, r) => {
+      setNodes(prev => prev.map(n => n.id===id ? { ...n, hex:{ q, r }, id: (id==='hub'?'hub':`q${q}r${r}`) } : n));
+    };
+
+    const deleteSelected = () => {
+      if (!selected) return; if (selected.id==='hub') { alert('Cannot delete hub'); return; }
+      setNodes(prev => prev.filter(n=>n.id!==selected.id)); setSelectedId('hub');
+    };
+
+    return (
+      React.createElement('div', { className:'mx-auto p-6 space-y-6 max-w-7xl' },
+        React.createElement('header', { className:'flex items-center gap-3' },
+          React.createElement('div', { className:'w-10 h-10 rounded-xl bg-emerald-600 text-white grid place-items-center font-bold' }, 'NX'),
+          React.createElement('div', null,
+            React.createElement('h1', { className:'text-xl font-semibold text-slate-900' }, 'Nexus of Nodes — Board Editor'),
+            React.createElement('p', { className:'text-slate-600 text-sm' }, 'Build a nodes.json and state.json compatible with your /nexusofnodes import on the bot.')
+          )
+        ),
+
+        React.createElement('div', { className:'panel-medieval p-4' },
+          React.createElement(Toolbar, { onAddNode:addNode, onAddRing:addRing, onAutoDepth:autoDepth, onImportNodes:importNodes, onExportNodes:exportNodes, onExportState:exportState, count:nodes.length })
+        ),
+
+        React.createElement('div', { className:'grid grid-cols-1 lg:grid-cols-3 gap-4' },
+          React.createElement('div', { className:'panel-medieval p-3 lg:col-span-2' },
+            React.createElement(CanvasBoard, { nodes, setSelectedId, onDragMove })
+          ),
+          React.createElement('aside', { className:'panel-medieval p-4 space-y-6' },
+            React.createElement('div', null,
+              React.createElement('h2', { className:'heading-medieval text-sm mb-3' }, 'Node Editor'),
+              React.createElement(NodeEditor, { node:selected, setNode:replaceNode, onDelete:deleteSelected })
+            ),
+            React.createElement('div', null,
+              React.createElement('h2', { className:'heading-medieval text-sm mb-3' }, 'State (fog & growth) export settings'),
+              React.createElement(StatePanel, { fog, setFog, distanceFog, setDistanceFog, growthPhase, setGrowthPhase })
+            )
+          )
+        ),
+
+        React.createElement('footer', { className:'text-center text-xs text-slate-500 pt-2' }, 'Made for OSClanTools Discord Bot — Nexus of Nodes. By Wni.')
+      )
+    );
+  }
+
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(React.createElement(App));
+  </script>
+</body>
+</html>
